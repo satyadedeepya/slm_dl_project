@@ -8,8 +8,8 @@ The full design is in [PROJECT_PLAN.md](PROJECT_PLAN.md).
 | Week | Item | Status |
 |---|---|---|
 | 1 | OS verified generators (scheduling, paging, Banker's, disk) + tests | ✅ done |
-| 1 | Evaluation harness (`eval/run_eval.py`) | ✅ done (tested locally with a fake model; real model runs on Colab) |
-| 1 | Baselines B0 / B1 | ⏳ run `eval/baseline_colab.ipynb` on a T4 |
+| 1 | Evaluation harness (`eval/run_eval.py`) | ✅ done (runs on NVIDIA CUDA, Intel Arc XPU or CPU) |
+| 1 | Baselines B0 / B1 | ⏳ running locally on Intel Arc |
 | 2 | CN + DBMS generators, concept Q&A, dataset build | — |
 | 3 | QLoRA training (FT-A, FT-B) + evaluation | — |
 | 4 | Error analysis, demo, report | — |
@@ -40,6 +40,22 @@ python -m data.generators.os_gen --n 100 --seed 2026 --split test --out data/pro
 python eval/run_eval.py --run-name B0_zeroshot
 python eval/run_eval.py --run-name B1_3shot --fewshot 3
 ```
+
+### Local setup on an Intel Arc GPU (Windows)
+
+```bash
+python -m venv .venv
+.venv/Scripts/python -m pip install torch --index-url https://download.pytorch.org/whl/xpu
+.venv/Scripts/python -m pip install transformers accelerate peft datasets numpy
+# Hugging Face's Xet transfer can stall on Windows; plain HTTP downloads reliably.
+HF_HUB_DISABLE_XET=1 .venv/Scripts/python eval/run_eval.py --run-name B0_zeroshot
+```
+
+Measured on a Core Ultra 5 125H (Arc iGPU, 8.4 GB shared memory, fp16):
+- Each decoding step costs about 0.35–0.45 s whatever the batch size, because the time goes into GPU kernel launch overhead rather than compute.
+- Throughput therefore scales with batch size: 2.8 tok/s at batch 1, 24 at batch 8, 79 at batch 32 and **144 at batch 64** (3.5 GB peak).
+- The default `--batch-size` is 64 for this reason.
+- The first call with a new input shape adds about 10 s of one-time kernel compilation.
 
 Results go to `eval/results/<run>/` (one JSONL per task with every prompt, output and score, plus
 `summary.json`) and are appended to `eval/results/summary.csv`, with 95% bootstrap confidence intervals.
