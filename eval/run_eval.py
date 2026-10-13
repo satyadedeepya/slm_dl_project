@@ -67,7 +67,7 @@ class Generator:
             device = "cpu"
         print(f"device: {device}", flush=True)
         self.model = AutoModelForCausalLM.from_pretrained(
-            model, torch_dtype=torch.float32 if device == "cpu" else torch.float16).to(device)
+            model, dtype=torch.float32 if device == "cpu" else torch.float16).to(device)
         if adapter:
             from peft import PeftModel
             self.model = PeftModel.from_pretrained(self.model, adapter)
@@ -334,7 +334,7 @@ def main():
     ap.add_argument("--run-name", required=True)
     ap.add_argument("--tasks", nargs="+", default=["csbench", "gen_os", "mbpp"], choices=list(TASKS))
     ap.add_argument("--fewshot", type=int, default=0)
-    ap.add_argument("--batch-size", type=int, default=16)
+    ap.add_argument("--batch-size", type=int, default=64)
     ap.add_argument("--limit", type=int, help="only first N items per task (smoke test)")
     ap.add_argument("--csbench-n", type=int, default=400)
     ap.add_argument("--mbpp-n", type=int, default=200)
