@@ -1,0 +1,6 @@
+__pycache__/
+eval/.cache/
+outputs/
+*.sqlite
+.venv/
+eval/results/smoke*
