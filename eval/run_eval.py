@@ -349,13 +349,17 @@ def main():
     ap.add_argument("--spider-n", type=int, default=200)
     ap.add_argument("--spider-dir")
     ap.add_argument("--gate-file")
+    ap.add_argument("--rescore", action="store_true",
+                    help="re-score outputs already saved in eval/results/<run>/ without running the model")
     args = ap.parse_args()
 
     out_dir = ROOT / "eval" / "results" / args.run_name
     out_dir.mkdir(parents=True, exist_ok=True)
-    gen = Generator(args.model, args.adapter, args.batch_size)
-    summary_csv = ROOT / "eval" / "results" / "summary.csv"
-    report = {}
+    gen = None if args.rescore else Generator(args.model, args.adapter, args.batch_size)
+    summary_json = out_dir / "summary.json"
+    meta = {"model": args.model, "adapter": args.adapter, "fewshot": args.fewshot}
+    # Merge into an existing summary so tasks can be run (or re-run) separately.
+    report = json.loads(summary_json.read_text(encoding="utf-8"))["results"] if summary_json.exists() else {}
 
     for name in args.tasks:
         print(f"[{args.run_name}] task {name}", flush=True)
@@ -363,7 +367,13 @@ def main():
         if args.limit:
             items, convs = items[:args.limit], convs[:args.limit]
         t0 = time.time()
-        outs = gen.chat(convs, max_new)
+        if args.rescore:
+            saved = _read_jsonl(out_dir / f"{name}.jsonl")
+            if len(saved) != len(items):
+                raise SystemExit(f"{name}: {len(saved)} saved outputs but {len(items)} items; use the same --limit")
+            outs = [s["output"] for s in saved]
+        else:
+            outs = gen.chat(convs, max_new)
         correct, groups = [], []
         with open(out_dir / f"{name}.jsonl", "w", encoding="utf-8") as f:
             for item, c, out in zip(items, convs, outs):
@@ -372,21 +382,32 @@ def main():
                 groups.append(info.pop("group", []))
                 f.write(json.dumps({"prompt": c[-1]["content"], "output": out, "correct": ok, **info},
                                    ensure_ascii=False, default=str) + "\n")
-        report[name] = {**summarize(correct, groups), "seconds": round(time.time() - t0, 1)}
+        seconds = report.get(name, {}).get("seconds") if args.rescore else round(time.time() - t0, 1)
+        report[name] = {**summarize(correct, groups), "seconds": seconds}
         r = report[name]
         print(f"  {name}: acc={r['acc']:.3f}  95% CI [{r['ci95'][0]:.3f}, {r['ci95'][1]:.3f}]  n={r['n']}")
+        # Persist after every task so a crash later in the run keeps finished results.
+        summary_json.write_text(json.dumps({"meta": meta, "results": report}, indent=2), encoding="utf-8")
+        update_summary_csv(args.run_name, name, args.fewshot, r)
 
-        new = not summary_csv.exists()
-        with open(summary_csv, "a", newline="", encoding="utf-8") as f:
-            w = csv.writer(f)
-            if new:
-                w.writerow(["run", "task", "fewshot", "n", "acc", "ci_low", "ci_high"])
-            w.writerow([args.run_name, name, args.fewshot, r["n"], f"{r['acc']:.4f}",
-                        f"{r['ci95'][0]:.4f}", f"{r['ci95'][1]:.4f}"])
-
-    meta = {"model": args.model, "adapter": args.adapter, "fewshot": args.fewshot}
-    (out_dir / "summary.json").write_text(json.dumps({"meta": meta, "results": report}, indent=2), encoding="utf-8")
     print(json.dumps({k: round(v["acc"], 4) for k, v in report.items()}, indent=2))
+
+
+def update_summary_csv(run: str, task: str, fewshot: int, r: dict) -> None:
+    """Insert or replace the (run, task) row in eval/results/summary.csv."""
+    path = ROOT / "eval" / "results" / "summary.csv"
+    header = ["run", "task", "fewshot", "n", "acc", "ci_low", "ci_high"]
+    rows = []
+    if path.exists():
+        with open(path, newline="", encoding="utf-8") as f:
+            rows = [row for row in csv.reader(f)][1:]
+    rows = [row for row in rows if row[:2] != [run, task]]
+    rows.append([run, task, str(fewshot), str(r["n"]), f"{r['acc']:.4f}",
+                 f"{r['ci95'][0]:.4f}", f"{r['ci95'][1]:.4f}"])
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(header)
+        w.writerows(rows)
 
 
 if __name__ == "__main__":
