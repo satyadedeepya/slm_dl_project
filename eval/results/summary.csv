@@ -1,0 +1,4 @@
+run,task,fewshot,n,acc,ci_low,ci_high
+B0_zeroshot,csbench,0,400,0.5125,0.4675,0.5600
+B0_zeroshot,gen_os,0,100,0.0400,0.0100,0.0800
+B0_zeroshot,mbpp,0,200,0.4150,0.3450,0.4800

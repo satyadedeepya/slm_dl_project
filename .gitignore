@@ -4,3 +4,4 @@ outputs/
 *.sqlite
 .venv/
 eval/results/smoke*
+eval/results/*.log
