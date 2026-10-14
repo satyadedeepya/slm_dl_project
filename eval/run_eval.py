@@ -66,14 +66,22 @@ class Generator:
         else:
             device = "cpu"
         print(f"device: {device}", flush=True)
+        # Load weights straight onto the device. On integrated GPUs (shared RAM) loading to CPU
+        # first and then calling .to(device) briefly holds two full copies of the model.
         self.model = AutoModelForCausalLM.from_pretrained(
-            model, dtype=torch.float32 if device == "cpu" else torch.float16).to(device)
+            model, dtype=torch.float32 if device == "cpu" else torch.float16, device_map={"": device})
+        self.device = device
         if adapter:
             from peft import PeftModel
             self.model = PeftModel.from_pretrained(self.model, adapter)
         self.model.eval()
         self.batch_size = batch_size
         self.torch = torch
+
+    def mem(self) -> str:
+        """Peak accelerator memory so far, for spotting batch sizes that will not fit."""
+        acc = getattr(self.torch, self.device, None) if self.device != "cpu" else None
+        return f"  (peak {acc.max_memory_allocated() / 1e9:.1f} GB)" if acc else ""
 
     def chat(self, conversations: list[list[dict]], max_new_tokens: int) -> list[str]:
         prompts = [self.tok.apply_chat_template(c, add_generation_prompt=True, tokenize=False) for c in conversations]
@@ -88,7 +96,7 @@ class Generator:
                                           pad_token_id=self.tok.pad_token_id)
             for i, row in zip(ids, gen[:, enc["input_ids"].shape[1]:]):
                 outs[i] = self.tok.decode(row, skip_special_tokens=True)
-            print(f"  generated {min(b + self.batch_size, len(order))}/{len(order)}", flush=True)
+            print(f"  generated {min(b + self.batch_size, len(order))}/{len(order)}{self.mem()}", flush=True)
         return [outs[i] for i in range(len(prompts))]
 
 
