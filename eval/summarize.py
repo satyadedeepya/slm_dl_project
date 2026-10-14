@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import sys
+from math import comb
 from pathlib import Path
 
 RESULTS = Path(__file__).resolve().parent / "results"
@@ -27,6 +28,26 @@ def load(runs: list[str]) -> dict[str, dict]:
     if not runs:
         runs = sorted(p.parent.name for p in RESULTS.glob("*/summary.json") if not p.parent.name.startswith("smoke"))
     return {r: json.loads((RESULTS / r / "summary.json").read_text(encoding="utf-8")) for r in runs}
+
+
+def mcnemar(ref: list[bool], new: list[bool]) -> tuple[int, int, float]:
+    """Exact two-sided McNemar test on paired correctness.
+
+    Returns (only_ref_correct, only_new_correct, p_value).
+    """
+    b = sum(r and not n for r, n in zip(ref, new))
+    c = sum(n and not r for r, n in zip(ref, new))
+    k, total = min(b, c), b + c
+    p = 1.0 if total == 0 else min(1.0, 2 * sum(comb(total, i) for i in range(k + 1)) / 2 ** total)
+    return b, c, p
+
+
+def paired(run: str, task: str) -> list[tuple[str, bool]] | None:
+    path = RESULTS / run / f"{task}.jsonl"
+    if not path.exists():
+        return None
+    with open(path, encoding="utf-8") as f:
+        return [(r["prompt"], bool(r["correct"])) for r in map(json.loads, f)]
 
 
 def pct(x: float) -> str:
@@ -47,6 +68,21 @@ def render(data: dict[str, dict]) -> str:
             res = data[r]["results"].get(t)
             cells.append(f"{pct(res['acc'])} [{pct(res['ci95'][0])}–{pct(res['ci95'][1])}]" if res else "–")
         out.append(f"| {TASK_NAMES[t]} | {n} | " + " | ".join(cells) + " |")
+
+    if len(runs) > 1:
+        ref = runs[0]
+        out += ["", f"## Paired significance vs {ref}", "",
+                "Exact McNemar test on the same items: how many items only the reference got right, "
+                "how many only the other run got right, and the two-sided p-value.", "",
+                "| Task | Run | Only ref. correct | Only run correct | p |", "|---|---|---|---|---|"]
+        for t in tasks:
+            a = paired(ref, t)
+            for r in runs[1:]:
+                b = paired(r, t)
+                if not a or not b or [p for p, _ in a] != [p for p, _ in b]:
+                    continue  # missing, or not the same items in the same order
+                only_ref, only_new, p = mcnemar([c for _, c in a], [c for _, c in b])
+                out.append(f"| {TASK_NAMES[t]} | {r} | {only_ref} | {only_new} | {p:.4f} |")
 
     for t in tasks:
         groups = sorted({g for d in data.values() for g in d["results"].get(t, {}).get("by_group", {})})
