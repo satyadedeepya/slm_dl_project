@@ -10,7 +10,7 @@ The full design is in [PROJECT_PLAN.md](PROJECT_PLAN.md).
 | 1 | OS verified generators (scheduling, paging, Banker's, disk) + tests | ✅ done |
 | 1 | Evaluation harness (`eval/run_eval.py`) | ✅ done (runs on NVIDIA CUDA, Intel Arc XPU or CPU) |
 | 1 | Baselines B0 (zero-shot) / B1 (3-shot) | ✅ done, see [Week 1 report](docs/week1_report.md) and [results](eval/results/RESULTS.md) |
-| 2 | CN + DBMS generators, concept Q&A, dataset build | ✅ done, see [Week 2 report](docs/week2_report.md) and [dataset card](data/DATASET.md); 25 concept topics pending Gemini quota |
+| 2 | CN + DBMS generators, concept Q&A, dataset build | ✅ built, see [Week 2 report](docs/week2_report.md) and [dataset card](data/DATASET.md). Spider, GATE PYQs and open textbooks added; GATE explanations, textbook Q&A and 25 concept topics pending Gemini quota (`data/run_teacher_jobs.cmd`) |
 | 3 | QLoRA training (FT-A, FT-B) + evaluation | — |
 | 4 | Error analysis, demo, report | — |
 
@@ -24,10 +24,14 @@ data/generators/dbms_gen.py  DBMS generators: closure, candidate keys, normal fo
 data/generators/grading.py   grades model output against a problem's `final` spec
 data/concepts/topics.json    133 syllabus topics for teacher concept Q&A
 data/build_concepts.py       Gemini concept Q&A (batched, resumable, key read from .env)
+data/build_gate.py           GATE PYQs: download, clean, year split, verified explanations
+data/build_textbook_qa.py    Q&A grounded in open-licensed textbooks
+data/run_teacher_jobs.cmd    daily runner for all Gemini jobs + dataset rebuild
 data/build_dataset.py        merge sources, dedupe, decontaminate, split -> sft_train/sft_val
 data/DATASET.md              dataset card: sources, licenses, filters, counts
 data/processed/              gen_*_{train,test}.jsonl, concepts.jsonl, sft_{train,val}.jsonl, build_report.json
 eval/run_eval.py             benchmark runner (csbench, gen_os, gen_cn, gen_dbms, mbpp, spider, gate; --rescore)
+data/external/               (git-ignored) Spider, GATE text, textbooks, caches
 eval/summarize.py            builds eval/results/RESULTS.md (CIs, McNemar tests, breakdowns)
 eval/run_baselines.cmd       runs B0 and B1 on every task (Windows)
 eval/baseline_colab.ipynb    Week-1 baseline notebook (Colab alternative)

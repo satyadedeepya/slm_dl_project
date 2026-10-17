@@ -9,6 +9,8 @@ Accuracy in %, with the 95% bootstrap confidence interval in brackets.
 | Verified CN numericals (exact match) | 100 | 1.0 [0.0–3.0] | 2.0 [0.0–5.0] |
 | Verified DBMS FD problems (exact match) | 100 | 15.0 [8.0–23.0] | 12.0 [6.0–19.0] |
 | MBPP (pass@1) | 200 | 41.5 [34.5–48.0] | 41.5 [35.0–48.0] |
+| Spider dev (execution acc.) | 200 | 50.5 [44.0–57.5] | – |
+| GATE MCQ | 56 | 33.9 [21.4–46.4] | – |
 
 ## Paired significance vs B0_zeroshot
 
@@ -60,6 +62,15 @@ Exact McNemar test on the same items: how many items only the reference got righ
 | decomposition | 16 | 50.0 | 31.2 |
 | fd | 61 | 3.3 | 6.6 |
 | normalization | 23 | 21.7 | 13.0 |
+
+## GATE MCQ: breakdown
+
+| Group | n | B0_zeroshot | B1_3shot |
+|---|---|---|---|
+| CN | 10 | 50.0 | – |
+| DBMS | 9 | 33.3 | – |
+| DSA | 32 | 31.2 | – |
+| OS | 5 | 20.0 | – |
 
 ## Run settings
 

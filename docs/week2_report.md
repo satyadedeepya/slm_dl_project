@@ -82,7 +82,44 @@
 
 **Interpretation:** the DBMS "successes" are at chance level. Lossless join is a two-way choice (50% expected by guessing) and normal form a four-way choice (25% expected). On the items that require an actual computation (closures and candidate keys), the model scores 3%. As with OS, 3-shot examples do not help. Together with Week 1, the base model is at or near **zero on every verified procedural task in OS, CN and DBMS**.
 
-## 6. Plan for Week 3
+## 6. Additional data sources (added after the first build)
+
+To use as many accurate sources as possible, three more were added.
+
+**Spider (text-to-SQL):** replaces `sql-create-context`.
+- 1,335 Spider train questions, each checked by running the gold query on its real SQLite database.
+- Spider dev becomes an evaluation set. sql-create-context may contain dev questions, which is why it was replaced.
+
+**GATE CSE previous-year questions:** 1,210 single-answer MCQs in our five subjects, from the GATE Overflow archive (pinned commit). Answers are official keys or GATE Overflow-verified.
+- **Split:** all papers ≤ 2020 → training; 2021–2026 split 50/50 by year and subject. That gives 1,154 for training and 56 for a held-out test.
+- **Explanations:** Gemini solves each training question without seeing the key, and only explanations that reach the key are kept.
+- **Copyright:** GATE text is copyrighted, so it is downloaded at build time into `data/external/` (git-ignored). Only question IDs are committed.
+
+**Open textbooks:** 240 passages (60 per book). Gemini writes Q&A answerable from each passage alone, and every item records its book and license.
+- Peterson & Davie, *Computer Networks* (CC BY 4.0)
+- Hailperin, *Operating Systems and Middleware* (CC BY-SA 3.0; its transactions chapter counts as DBMS)
+- Erickson, *Algorithms* (CC BY 4.0)
+- Morin, *Open Data Structures* (CC BY 2.5)
+
+Text extraction repairs PDF glyph names and ligatures, and skips exercise-heavy passages. Copyrighted standard texts are not used. Watt's *Database Design* was left out because its hosts block automated download.
+
+**New zero-shot baselines:**
+
+| Task | n | B0 |
+|---|---|---|
+| Spider dev (execution accuracy) | 200 | 50.5 [44.0–57.5] |
+| GATE test (MCQ) | 56 | 33.9 [21.4–46.4] |
+
+GATE by subject: CN 5/10, DBMS 3/9, DSA 10/32, OS 1/5. Chance on four options is 25%. These two tasks have no few-shot (B1) variant yet.
+
+**Pending (Gemini free quota):**
+- GATE explanations: about 96 requests
+- Textbook Q&A: about 60 requests
+- The last 25 concept topics: about 9 requests
+
+`data/run_teacher_jobs.cmd` runs all three in priority order and rebuilds the dataset. Each job resumes where it stopped.
+
+## 7. Plan for Week 3
 
 - **FT-B (full mix)** vs **FT-A (no generator slice)**, both evaluated with the same harness against B1, the stronger baseline. Reporting covers McNemar p-values, format-failure rates and per-family accuracy.
 - **Training budget:** about 1.59M training tokens per epoch (FT-A: about 0.70M).
