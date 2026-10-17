@@ -6,8 +6,8 @@ Tasks
   gen_cn   Held-out verified CN problems (gen_cn_test.jsonl)
   gen_dbms Held-out verified DBMS problems (gen_dbms_test.jsonl)
   mbpp     MBPP test split (pass@1 via executing the unit tests)
-  spider   Spider dev (execution accuracy) -- needs --spider-dir with dev.json + database/
-  gate     Optional GATE MCQs from --gate-file (JSONL: question, A, B, C, D, answer)
+  spider   Spider dev (execution accuracy); Spider is downloaded to data/external/spider_data
+  gate     Held-out GATE CSE MCQs (2021-2026 half) from data/build_gate.py
 
 Examples (Colab T4):
   python eval/run_eval.py --run-name B0_zeroshot
@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import functools
 import json
 import random
 import re
@@ -274,26 +275,36 @@ def _same_result(pred, gold, ordered: bool) -> bool:
     return p == g if ordered else Counter(p) == Counter(g)
 
 
+SPIDER_DIR = ROOT / "data" / "external" / "spider_data"
+GATE_TEST = ROOT / "data" / "external" / "gate" / "gate_test.jsonl"
+
+
+@functools.lru_cache(maxsize=None)
+def spider_schema(db_path: Path) -> str:
+    """CREATE TABLE statements of a Spider database (shared by evaluation and training data)."""
+    conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    try:
+        return "\n".join(s for (s,) in conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND sql IS NOT NULL"))
+    finally:
+        conn.close()
+
+
+def spider_prompt(db_path: Path, question: str) -> str:
+    return f"Database schema:\n{spider_schema(db_path)}\n\nQuestion: {question}\n\n{SQL_INSTR}"
+
+
 def task_spider(args):
-    if not args.spider_dir:
-        raise SystemExit("spider needs --spider-dir (folder with dev.json and database/)")
-    sd = Path(args.spider_dir)
+    sd = Path(args.spider_dir) if args.spider_dir else SPIDER_DIR
+    if not (sd / "dev.json").exists():
+        raise SystemExit(f"spider needs Spider at {sd} (dev.json + database/); see data/build_dataset.py")
     dev = json.loads((sd / "dev.json").read_text(encoding="utf-8"))
     items = random.Random(0).sample(dev, min(args.spider_n, len(dev)))
-    schema_cache: dict[str, str] = {}
 
     def db_path(r):
         return sd / "database" / r["db_id"] / f"{r['db_id']}.sqlite"
 
-    def schema(r):
-        if r["db_id"] not in schema_cache:
-            conn = sqlite3.connect(db_path(r))
-            ddl = [s for (s,) in conn.execute("SELECT sql FROM sqlite_master WHERE type='table' AND sql IS NOT NULL")]
-            conn.close()
-            schema_cache[r["db_id"]] = "\n".join(ddl)
-        return schema_cache[r["db_id"]]
-
-    convs = [conv(f"Database schema:\n{schema(r)}\n\nQuestion: {r['question']}\n\n{SQL_INSTR}", []) for r in items]
+    convs = [conv(spider_prompt(db_path(r), r["question"]), []) for r in items]
 
     def score(r, out):
         sql = extract_block(out, "sql")
@@ -308,9 +319,10 @@ def task_spider(args):
 
 
 def task_gate(args):
-    if not args.gate_file:
-        raise SystemExit("gate needs --gate-file (JSONL with question, A, B, C, D, answer[, subject])")
-    items = _read_jsonl(args.gate_file)
+    path = Path(args.gate_file) if args.gate_file else GATE_TEST
+    if not path.exists():
+        raise SystemExit(f"gate needs {path}: run `python data/build_gate.py` first")
+    items = _read_jsonl(path)
     convs = [conv(_mcq_text({"Question": r["question"], **{k: r[k] for k in "ABCD"}}), []) for r in items]
 
     def score(r, out):
