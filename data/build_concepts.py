@@ -97,6 +97,7 @@ class Gemini:
         self.min_interval = 60.0 / rpm
         self.last = 0.0
         self.calls = 0
+        self.version = model
 
     def _request(self, url: str, body: dict | None = None) -> dict:
         req = urllib.request.Request(url, data=json.dumps(body).encode() if body is not None else None,
@@ -121,6 +122,7 @@ class Gemini:
             try:
                 data = self._request(url, body)
                 self.calls += 1
+                self.version = data.get("modelVersion", self.model)  # concrete model behind an alias
                 text = "".join(p.get("text", "") for p in data["candidates"][0]["content"]["parts"]
                                if not p.get("thought"))
                 return json.loads(text)
@@ -188,7 +190,7 @@ def build_topic(gem: Gemini, subject: str, topic: str, n_open: int, n_mcq: int, 
     items = "\n\n".join(f"[id {q['id']}] ({q['type']})\n{user_prompt(q)}" for q in qs)
     answers = gem.generate_json(ANSWER_PROMPT.format(items=items), temperature=0.3)
     by_id = {a.get("id"): str(a.get("answer", "")).strip() for a in answers if isinstance(a, dict)}
-    return {"subject": subject, "topic": topic, "model": gem.model, "questions": qs, "answers": by_id}
+    return {"subject": subject, "topic": topic, "model": gem.version, "questions": qs, "answers": by_id}
 
 
 def export() -> tuple[int, dict]:

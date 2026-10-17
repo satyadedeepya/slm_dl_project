@@ -7,3 +7,4 @@ eval/results/smoke*
 eval/results/*.log
 .env
 data/concepts/cache/
+data/concepts/build.*
