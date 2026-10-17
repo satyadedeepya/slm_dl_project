@@ -11,11 +11,10 @@ Usage:
 """
 from __future__ import annotations
 
-import argparse
 import random
 from fractions import Fraction
 
-from .common import Problem, fmt, fmt_avg, md_table, write_jsonl
+from .common import Problem, cli, fmt, fmt_avg, md_table, run_generators, write_jsonl  # noqa: F401
 
 # =====================================================================
 # CPU scheduling
@@ -477,29 +476,8 @@ GENERATORS = [(gen_scheduling, 0.40), (gen_page_replacement, 0.25), (gen_bankers
 
 
 def generate(n: int, seed: int, split: str = "train") -> list[dict]:
-    rng = random.Random(seed)
-    funcs, weights = zip(*GENERATORS)
-    records, seen = [], set()
-    while len(records) < n:
-        prob = rng.choices(funcs, weights)[0](rng, split)
-        if prob.question in seen:
-            continue
-        seen.add(prob.question)
-        records.append(prob.to_record(f"os-{split}-{seed}-{len(records):05d}"))
-    return records
-
-
-def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--n", type=int, default=900)
-    ap.add_argument("--seed", type=int, default=42)
-    ap.add_argument("--split", choices=["train", "test"], default="train")
-    ap.add_argument("--out", required=True)
-    args = ap.parse_args()
-    recs = generate(args.n, args.seed, args.split)
-    write_jsonl(recs, args.out)
-    print(f"wrote {len(recs)} OS problems to {args.out}")
+    return run_generators(GENERATORS, "os", n, seed, split)
 
 
 if __name__ == "__main__":
-    main()
+    cli(GENERATORS, "os", "OS", default_n=900)

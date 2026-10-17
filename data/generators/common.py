@@ -6,7 +6,9 @@ machine-readable `final` dict that `grading.grade` uses to check model output.
 """
 from __future__ import annotations
 
+import argparse
 import json
+import random
 import re
 from dataclasses import dataclass, field
 from fractions import Fraction
@@ -94,3 +96,29 @@ def final_segment(text: str) -> str:
     """Text after the last 'Final answer' marker (or the tail if none)."""
     idx = text.lower().rfind("final answer")
     return text[idx:] if idx != -1 else text[-300:]
+
+
+def run_generators(generators, prefix: str, n: int, seed: int, split: str = "train") -> list[dict]:
+    """Draw `n` unique problems from weighted (generator, weight) pairs, deterministically for a seed."""
+    rng = random.Random(seed)
+    funcs, weights = zip(*generators)
+    records, seen = [], set()
+    while len(records) < n:
+        prob = rng.choices(funcs, weights)[0](rng, split)
+        if prob.question in seen:
+            continue
+        seen.add(prob.question)
+        records.append(prob.to_record(f"{prefix}-{split}-{seed}-{len(records):05d}"))
+    return records
+
+
+def cli(generators, prefix: str, label: str, default_n: int) -> None:
+    ap = argparse.ArgumentParser(description=f"Generate verified {label} problems.")
+    ap.add_argument("--n", type=int, default=default_n)
+    ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument("--split", choices=["train", "test"], default="train")
+    ap.add_argument("--out", required=True)
+    args = ap.parse_args()
+    recs = run_generators(generators, prefix, args.n, args.seed, args.split)
+    write_jsonl(recs, args.out)
+    print(f"wrote {len(recs)} {label} problems to {args.out}")
