@@ -8,3 +8,4 @@ eval/results/*.log
 .env
 data/concepts/cache/
 data/concepts/build.*
+eval/results/baselines.done

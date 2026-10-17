@@ -18,6 +18,8 @@ RESULTS = Path(__file__).resolve().parent / "results"
 TASK_NAMES = {
     "csbench": "CS-Bench (DSA/OS/CN, MCQ + T/F)",
     "gen_os": "Verified OS numericals (exact match)",
+    "gen_cn": "Verified CN numericals (exact match)",
+    "gen_dbms": "Verified DBMS FD problems (exact match)",
     "mbpp": "MBPP (pass@1)",
     "spider": "Spider dev (execution acc.)",
     "gate": "GATE MCQ",
