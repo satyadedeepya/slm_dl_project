@@ -6,6 +6,8 @@ Accuracy in %, with the 95% bootstrap confidence interval in brackets.
 |---|---|---|---|
 | CS-Bench (DSA/OS/CN, MCQ + T/F) | 400 | 51.2 [46.8–56.0] | 58.0 [53.0–63.0] |
 | Verified OS numericals (exact match) | 100 | 4.0 [1.0–8.0] | 4.0 [1.0–8.0] |
+| Verified CN numericals (exact match) | 100 | 1.0 [0.0–3.0] | 2.0 [0.0–5.0] |
+| Verified DBMS FD problems (exact match) | 100 | 15.0 [8.0–23.0] | 12.0 [6.0–19.0] |
 | MBPP (pass@1) | 200 | 41.5 [34.5–48.0] | 41.5 [35.0–48.0] |
 
 ## Paired significance vs B0_zeroshot
@@ -16,6 +18,8 @@ Exact McNemar test on the same items: how many items only the reference got righ
 |---|---|---|---|---|
 | CS-Bench (DSA/OS/CN, MCQ + T/F) | B1_3shot | 42 | 69 | 0.0132 |
 | Verified OS numericals (exact match) | B1_3shot | 3 | 3 | 1.0000 |
+| Verified CN numericals (exact match) | B1_3shot | 1 | 2 | 1.0000 |
+| Verified DBMS FD problems (exact match) | B1_3shot | 11 | 8 | 0.6476 |
 | MBPP (pass@1) | B1_3shot | 22 | 22 | 1.0000 |
 
 ## CS-Bench (DSA/OS/CN, MCQ + T/F): breakdown
@@ -38,6 +42,24 @@ Exact McNemar test on the same items: how many items only the reference got righ
 | deadlock | 12 | 25.0 | 33.3 |
 | disk_scheduling | 18 | 0.0 | 0.0 |
 | page_replacement | 27 | 3.7 | 0.0 |
+
+## Verified CN numericals (exact match): breakdown
+
+| Group | n | B0_zeroshot | B1_3shot |
+|---|---|---|---|
+| checksum | 10 | 0.0 | 0.0 |
+| crc | 26 | 0.0 | 0.0 |
+| delay | 14 | 7.1 | 0.0 |
+| flow_control | 17 | 0.0 | 5.9 |
+| subnetting | 33 | 0.0 | 3.0 |
+
+## Verified DBMS FD problems (exact match): breakdown
+
+| Group | n | B0_zeroshot | B1_3shot |
+|---|---|---|---|
+| decomposition | 16 | 50.0 | 31.2 |
+| fd | 61 | 3.3 | 6.6 |
+| normalization | 23 | 21.7 | 13.0 |
 
 ## Run settings
 
