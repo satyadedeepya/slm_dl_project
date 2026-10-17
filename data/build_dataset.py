@@ -2,9 +2,12 @@
 
 Sources (priority order for de-duplication):
   generator   verified OS / CN / DBMS problems   data/processed/gen_{os,cn,dbms}_train.jsonl
+  gate        GATE CSE PYQs (<=2020 + half of 2021-26) with explanations that reach the official key
+              (data/build_gate.py; git-ignored, downloaded at build time)
   teacher     concept Q&A from build_concepts.py data/processed/concepts.jsonl (optional)
+  textbook    Q&A grounded in open-licensed textbooks (data/build_textbook_qa.py; optional)
   mbpp        MBPP train split; kept only if the reference code passes its own tests
-  sql         b-mc2/sql-create-context; complex queries only; kept only if SQLite accepts the query
+  spider      Spider train; the gold query must execute on its SQLite database (<= 15 per database)
   codealpaca  CodeAlpaca-20k; Python/DSA items whose code parses
   replay      alpaca-cleaned general instructions (limits forgetting)
 
@@ -12,8 +15,8 @@ Cleaning:
   * exact de-duplication of user prompts across all sources
   * near-duplicate removal (MinHash LSH, Jaccard >= 0.8) inside the public sources
   * decontamination: drop items sharing a 13-word n-gram with any evaluation item
-    (CS-Bench English test, MBPP test, held-out generator problems), or containing a
-    short evaluation item verbatim
+    (CS-Bench English test, MBPP test, held-out generator problems, Spider dev, GATE test half),
+    or containing a short evaluation item verbatim
   * length filter: <= 1024 tokens with the Qwen chat template
 
 Usage:
@@ -26,7 +29,6 @@ import ast
 import json
 import random
 import re
-import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -38,11 +40,13 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from data.generators.common import SYSTEM_PROMPT, write_jsonl  # noqa: E402
-from eval.run_eval import CODE_INSTR, CSB_URL, SQL_INSTR, _download, _read_jsonl  # noqa: E402
+from eval.run_eval import (CODE_INSTR, CSB_URL, GATE_TEST, SPIDER_DIR, _download, _exec_sql,  # noqa: E402
+                           _read_jsonl, spider_prompt)
 
 PROC = ROOT / "data" / "processed"
-PRIORITY = ["generator", "teacher", "mbpp", "sql", "codealpaca", "replay"]
-SQL_COMPLEX = re.compile(r"\b(join|group by|order by|having|intersect|union|except)\b|\(\s*select", re.I)
+PRIORITY = ["generator", "gate", "teacher", "textbook", "mbpp", "spider", "codealpaca", "replay"]
+GATE_TRAIN = ROOT / "data" / "external" / "gate" / "gate_train.jsonl"
+TEXTBOOK_QA = PROC / "textbook_qa.jsonl"
 DSA_WORDS = re.compile(r"\b(array|list|linked list|stack|queue|tree|graph|sort|search|recurs|matrix|string|"
                        r"hash|dictionary|binary|prime|fibonacci|factorial|palindrome|algorithm|substring|"
                        r"duplicate|maximum|minimum|sum|reverse)", re.I)
@@ -106,34 +110,42 @@ def load_mbpp() -> list[dict]:
     return out
 
 
-def _sql_ok(ddl: str, query: str) -> bool:
-    conn = sqlite3.connect(":memory:")
-    try:
-        conn.executescript(ddl)
-        conn.execute(f"EXPLAIN {query}")
-        return True
-    except sqlite3.Error:
-        return False
-    finally:
-        conn.close()
-
-
-def load_sql(n: int, rng: random.Random) -> list[dict]:
-    from datasets import load_dataset
-    rows = [r for r in load_dataset("b-mc2/sql-create-context", split="train") if SQL_COMPLEX.search(r["answer"])]
+def load_spider(n: int, rng: random.Random, per_db: int = 15) -> list[dict]:
+    """Spider train questions; the gold query must execute on its SQLite database (at most `per_db` per database)."""
+    rows = json.loads((SPIDER_DIR / "train_spider.json").read_text(encoding="utf-8"))
     rng.shuffle(rows)
-    out = []
+    out, per = [], Counter()
     for i, r in enumerate(rows):
-        ddl = r["context"].replace("; ", ";\n").strip()
-        if not ddl.endswith(";"):
-            ddl += ";"
-        if not _sql_ok(ddl, r["answer"]):
+        if per[r["db_id"]] >= per_db:
             continue
-        user = f"Database schema:\n{ddl}\n\nQuestion: {r['question']}\n\n{SQL_INSTR}"
-        out.append(record("sql", "DBMS", "sql/text_to_sql", user, f"```sql\n{r['answer'].strip()}\n```", f"sql-{i}"))
+        db = SPIDER_DIR / "database" / r["db_id"] / f"{r['db_id']}.sqlite"
+        try:
+            _exec_sql(db, r["query"])
+        except Exception:
+            continue
+        per[r["db_id"]] += 1
+        rec = record("spider", "DBMS", "sql/spider", spider_prompt(db, r["question"]),
+                     f"```sql\n{r['query'].strip()}\n```", f"spider-{i}")
+        # Prompts on one database share the whole schema, so duplicates are judged on the question alone.
+        rec["dedupe_text"] = f"{r['db_id']}: {r['question']}"
+        out.append(rec)
         if len(out) >= n:
             break
     return out
+
+
+def load_gate() -> list[dict]:
+    if not GATE_TRAIN.exists():
+        print("  (no GATE explanations yet: run data/build_gate.py --explain; continuing without GATE)")
+        return []
+    return _read_jsonl(GATE_TRAIN)
+
+
+def load_textbook() -> list[dict]:
+    if not TEXTBOOK_QA.exists():
+        print("  (no textbook Q&A yet: run data/build_textbook_qa.py; continuing without it)")
+        return []
+    return _read_jsonl(TEXTBOOK_QA)
 
 
 def load_codealpaca(n: int, rng: random.Random) -> list[dict]:
@@ -223,13 +235,17 @@ def eval_texts() -> dict[str, list[str]]:
                            for r in load_dataset("google-research-datasets/mbpp", "full", split="test")]}
     for sub in ("os", "cn", "dbms"):
         texts[f"gen_{sub}_test"] = [r["messages"][1]["content"] for r in _read_jsonl(PROC / f"gen_{sub}_test.jsonl")]
+    if (SPIDER_DIR / "dev.json").exists():
+        texts["spider_dev"] = [r["question"] for r in json.loads((SPIDER_DIR / "dev.json").read_text(encoding="utf-8"))]
+    if GATE_TEST.exists():
+        texts["gate_test"] = [" ".join(r[k] for k in ("question", "A", "B", "C", "D")) for r in _read_jsonl(GATE_TEST)]
     return texts
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--seed", type=int, default=0)
-    ap.add_argument("--sql-n", type=int, default=1000)
+    ap.add_argument("--spider-n", type=int, default=1500)
     ap.add_argument("--codealpaca-n", type=int, default=1200)
     ap.add_argument("--replay-n", type=int, default=500)
     ap.add_argument("--val-frac", type=float, default=0.05)
@@ -238,9 +254,9 @@ def main():
     rng = random.Random(args.seed)
 
     print("loading sources ...", flush=True)
-    raw = {"generator": load_generators(), "teacher": load_teacher(), "mbpp": load_mbpp(),
-           "sql": load_sql(args.sql_n, rng), "codealpaca": load_codealpaca(args.codealpaca_n, rng),
-           "replay": load_replay(args.replay_n, rng)}
+    raw = {"generator": load_generators(), "gate": load_gate(), "teacher": load_teacher(),
+           "textbook": load_textbook(), "mbpp": load_mbpp(), "spider": load_spider(args.spider_n, rng),
+           "codealpaca": load_codealpaca(args.codealpaca_n, rng), "replay": load_replay(args.replay_n, rng)}
     report = {"loaded": {k: len(v) for k, v in raw.items()}, "dropped": Counter()}
     print("  loaded:", report["loaded"], flush=True)
 
@@ -248,7 +264,8 @@ def main():
     ev = eval_texts()
     ev13 = set().union(*(ngrams(words(t), 13) for ts in ev.values() for t in ts))
     ev13_no_gen = set().union(*(ngrams(words(t), 13) for k, ts in ev.items() if not k.startswith("gen_") for t in ts))
-    short_eval = {norm(t) for t in ev["csbench"] if 6 <= len(words(t)) < 13}
+    short_eval = {norm(t) for k in ("csbench", "spider_dev", "gate_test") for t in ev.get(k, [])
+                  if 6 <= len(words(t)) < 13}
 
     from transformers import AutoTokenizer
     tok = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-1.5B-Instruct")
@@ -257,11 +274,12 @@ def main():
     for source in PRIORITY:
         for r in raw[source]:
             user, full = r["messages"][1]["content"], r["messages"][1]["content"] + " " + r["messages"][2]["content"]
-            key = norm(user)
+            dedupe_text = r.pop("dedupe_text", user)
+            key = norm(dedupe_text)
             if key in seen:
                 report["dropped"][f"{source}:exact_duplicate"] += 1
                 continue
-            if source != "generator" and lsh.is_near_duplicate(user):
+            if source != "generator" and lsh.is_near_duplicate(dedupe_text):
                 report["dropped"][f"{source}:near_duplicate"] += 1
                 continue
             # Generator problems share template sentences with the held-out generator tests by design
