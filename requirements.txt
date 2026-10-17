@@ -4,4 +4,7 @@ transformers>=4.45
 accelerate
 peft
 datasets
+# Data tools above are needed by data/build_textbook_qa.py.
 # Week 3 training: unsloth, trl, bitsandbytes (installed in the training notebook)
+pypdf
+pylatexenc
