@@ -9,7 +9,7 @@ The full design is in [PROJECT_PLAN.md](PROJECT_PLAN.md).
 |---|---|---|
 | 1 | OS verified generators (scheduling, paging, Banker's, disk) + tests | ✅ done |
 | 1 | Evaluation harness (`eval/run_eval.py`) | ✅ done (runs on NVIDIA CUDA, Intel Arc XPU or CPU) |
-| 1 | Baselines B0 / B1 | ⏳ running locally on Intel Arc |
+| 1 | Baselines B0 (zero-shot) / B1 (3-shot) | ✅ done, see [Week 1 report](docs/week1_report.md) and [results](eval/results/RESULTS.md) |
 | 2 | CN + DBMS generators, concept Q&A, dataset build | — |
 | 3 | QLoRA training (FT-A, FT-B) + evaluation | — |
 | 4 | Error analysis, demo, report | — |
@@ -21,8 +21,12 @@ data/generators/common.py    Problem record, formatting, number parsing
 data/generators/os_gen.py    OS problem generators + solvers (CLI)
 data/generators/grading.py   grades model output against a problem's `final` spec
 data/processed/              generated JSONL (gen_os_train: 900, gen_os_test: 100)
-eval/run_eval.py             benchmark runner (csbench, gen_os, mbpp, spider, gate)
-eval/baseline_colab.ipynb    Week-1 baseline notebook
+eval/run_eval.py             benchmark runner (csbench, gen_os, mbpp, spider, gate; --rescore)
+eval/summarize.py            builds eval/results/RESULTS.md (CIs, McNemar tests, breakdowns)
+eval/run_baselines.cmd       runs B0 and B1 back to back (Windows)
+eval/baseline_colab.ipynb    Week-1 baseline notebook (Colab alternative)
+eval/results/                per-run outputs, summary.csv, RESULTS.md
+docs/week1_report.md         Week 1 report: setup, baselines, analysis
 tests/test_os_gen.py         textbook (Silberschatz) cases + property tests
 ```
 
@@ -39,6 +43,10 @@ python -m data.generators.os_gen --n 100 --seed 2026 --split test --out data/pro
 # Evaluate (GPU)
 python eval/run_eval.py --run-name B0_zeroshot
 python eval/run_eval.py --run-name B1_3shot --fewshot 3
+
+# Re-score saved outputs (no GPU), then rebuild the comparison table
+python eval/run_eval.py --run-name B0_zeroshot --rescore
+python eval/summarize.py
 ```
 
 ### Local setup on an Intel Arc GPU (Windows)
