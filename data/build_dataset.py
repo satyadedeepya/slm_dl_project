@@ -20,7 +20,8 @@ Cleaning:
   * length filter: <= 1024 tokens with the Qwen chat template
 
 Usage:
-  python data/build_dataset.py            # writes data/processed/sft_{train,val}.jsonl + build_report.json
+  python data/build_dataset.py            # writes data/external/sft/sft_{train,val}_full.jsonl (training input),
+                                          # public copies without GATE in data/processed/, + build_report.json
 """
 from __future__ import annotations
 
@@ -308,8 +309,13 @@ def main():
         train += rs[k:]
     rng.shuffle(train)
     rng.shuffle(val)
-    write_jsonl(train, PROC / "sft_train.jsonl")
-    write_jsonl(val, PROC / "sft_val.jsonl")
+    # Full splits (used for training) live in the git-ignored data/external/. The committed copies in
+    # data/processed/ leave out GATE items, whose question text must not be republished.
+    full_dir = ROOT / "data" / "external" / "sft"
+    write_jsonl(train, full_dir / "sft_train_full.jsonl")
+    write_jsonl(val, full_dir / "sft_val_full.jsonl")
+    write_jsonl([r for r in train if r["source"] != "gate"], PROC / "sft_train.jsonl")
+    write_jsonl([r for r in val if r["source"] != "gate"], PROC / "sft_val.jsonl")
 
     toks = [r["n_tokens"] for r in kept]
     report.update({
