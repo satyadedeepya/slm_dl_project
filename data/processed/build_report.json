@@ -1,0 +1,38 @@
+{
+  "loaded": {
+    "generator": 2400,
+    "teacher": 1183,
+    "mbpp": 373,
+    "sql": 1000,
+    "codealpaca": 1200,
+    "replay": 500
+  },
+  "dropped": {
+    "codealpaca:contamination": 24,
+    "mbpp:contamination": 62
+  },
+  "kept": {
+    "codealpaca": 1176,
+    "generator": 2400,
+    "mbpp": 311,
+    "replay": 500,
+    "sql": 1000,
+    "teacher": 1183
+  },
+  "kept_by_subject": {
+    "CN": 1152,
+    "DBMS": 1643,
+    "DSA": 330,
+    "General": 500,
+    "OS": 1184,
+    "Programming": 1761
+  },
+  "train": 6241,
+  "val": 329,
+  "tokens": {
+    "total": 1671657,
+    "mean": 254,
+    "max": 904,
+    "train_total": 1587255
+  }
+}
