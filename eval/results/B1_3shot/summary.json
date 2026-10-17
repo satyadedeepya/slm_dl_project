@@ -1,0 +1,85 @@
+{
+  "meta": {
+    "model": "Qwen/Qwen2.5-1.5B-Instruct",
+    "adapter": null,
+    "fewshot": 3
+  },
+  "results": {
+    "csbench": {
+      "n": 400,
+      "acc": 0.58,
+      "ci95": [
+        0.53,
+        0.63
+      ],
+      "by_group": {
+        "Assertion": {
+          "n": 100,
+          "acc": 0.6
+        },
+        "CN": {
+          "n": 138,
+          "acc": 0.6159420289855072
+        },
+        "DSA": {
+          "n": 144,
+          "acc": 0.5763888888888888
+        },
+        "Knowledge": {
+          "n": 258,
+          "acc": 0.6356589147286822
+        },
+        "Multiple-choice": {
+          "n": 300,
+          "acc": 0.5733333333333334
+        },
+        "OS": {
+          "n": 118,
+          "acc": 0.5423728813559322
+        },
+        "Reasoning": {
+          "n": 142,
+          "acc": 0.4788732394366197
+        }
+      },
+      "seconds": null
+    },
+    "gen_os": {
+      "n": 100,
+      "acc": 0.04,
+      "ci95": [
+        0.01,
+        0.08
+      ],
+      "by_group": {
+        "cpu_scheduling": {
+          "n": 43,
+          "acc": 0.0
+        },
+        "deadlock": {
+          "n": 12,
+          "acc": 0.3333333333333333
+        },
+        "disk_scheduling": {
+          "n": 18,
+          "acc": 0.0
+        },
+        "page_replacement": {
+          "n": 27,
+          "acc": 0.0
+        }
+      },
+      "seconds": 3417.7
+    },
+    "mbpp": {
+      "n": 200,
+      "acc": 0.415,
+      "ci95": [
+        0.35,
+        0.48
+      ],
+      "by_group": {},
+      "seconds": 1215.8
+    }
+  }
+}
