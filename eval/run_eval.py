@@ -2,7 +2,9 @@
 
 Tasks
   csbench  CS-Bench English test, DSA/OS/CN, multiple-choice + assertion (accuracy)
-  gen_os   Fresh verified OS problems from data/processed/gen_os_test.jsonl (exact match)
+  gen_os   Held-out verified OS problems (data/processed/gen_os_test.jsonl, exact match)
+  gen_cn   Held-out verified CN problems (gen_cn_test.jsonl)
+  gen_dbms Held-out verified DBMS problems (gen_dbms_test.jsonl)
   mbpp     MBPP test split (pass@1 via executing the unit tests)
   spider   Spider dev (execution accuracy) -- needs --spider-dir with dev.json + database/
   gate     Optional GATE MCQs from --gate-file (JSONL: question, A, B, C, D, answer)
@@ -31,8 +33,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from data.generators import os_gen  # noqa: E402
-from data.generators.common import SYSTEM_PROMPT  # noqa: E402
+from data.generators import cn_gen, dbms_gen, os_gen  # noqa: E402
+from data.generators.common import SYSTEM_PROMPT, write_jsonl  # noqa: E402
 from data.generators.grading import grade  # noqa: E402
 
 CSB_DOMAINS = {"Data Structure and Algorithm": "DSA", "Operating System": "OS", "Computer Network": "CN"}
@@ -199,20 +201,27 @@ def task_csbench(args):
     return items, convs, 512, score
 
 
-def task_gen_os(args):
-    path = ROOT / "data" / "processed" / "gen_os_test.jsonl"
-    if not path.exists():
-        recs = os_gen.generate(100, seed=2026, split="test")
-        os_gen.write_jsonl(recs, path)
-    items = _read_jsonl(path)
-    shots_src = os_gen.generate(args.fewshot, seed=999, split="train") if args.fewshot else []
-    shots = [(s["messages"][1]["content"] + "\n\n" + GEN_INSTR, s["messages"][2]["content"]) for s in shots_src]
-    convs = [conv(r["messages"][1]["content"] + "\n\n" + GEN_INSTR, shots) for r in items]
+def _gen_task(module, subject: str):
+    """Task over the held-out verified problems in data/processed/gen_<subject>_test.jsonl."""
+    def task(args):
+        path = ROOT / "data" / "processed" / f"gen_{subject}_test.jsonl"
+        if not path.exists():
+            write_jsonl(module.generate(100, seed=2026, split="test"), path)
+        items = _read_jsonl(path)
+        shots_src = module.generate(args.fewshot, seed=999, split="train") if args.fewshot else []
+        shots = [(s["messages"][1]["content"] + "\n\n" + GEN_INSTR, s["messages"][2]["content"]) for s in shots_src]
+        convs = [conv(r["messages"][1]["content"] + "\n\n" + GEN_INSTR, shots) for r in items]
 
-    def score(r, out):
-        return grade(r["final"], out), {"group": [r["topic"].split("/")[0]]}
+        def score(r, out):
+            return grade(r["final"], out), {"group": [r["topic"].split("/")[0]]}
 
-    return items, convs, 1024, score
+        return items, convs, 1024, score
+    return task
+
+
+task_gen_os = _gen_task(os_gen, "os")
+task_gen_cn = _gen_task(cn_gen, "cn")
+task_gen_dbms = _gen_task(dbms_gen, "dbms")
 
 
 def _run_python(code: str, timeout: int = 10) -> bool:
@@ -311,7 +320,8 @@ def task_gate(args):
     return items, convs, 512, score
 
 
-TASKS = {"csbench": task_csbench, "gen_os": task_gen_os, "mbpp": task_mbpp, "spider": task_spider, "gate": task_gate}
+TASKS = {"csbench": task_csbench, "gen_os": task_gen_os, "gen_cn": task_gen_cn, "gen_dbms": task_gen_dbms,
+         "mbpp": task_mbpp, "spider": task_spider, "gate": task_gate}
 
 
 # ---------------------------------------------------------------------------
@@ -401,11 +411,14 @@ def update_summary_csv(run: str, task: str, fewshot: int, r: dict) -> None:
     if path.exists():
         with open(path, newline="", encoding="utf-8") as f:
             rows = [row for row in csv.reader(f)][1:]
-    rows = [row for row in rows if row[:2] != [run, task]]
-    rows.append([run, task, str(fewshot), str(r["n"]), f"{r['acc']:.4f}",
-                 f"{r['ci95'][0]:.4f}", f"{r['ci95'][1]:.4f}"])
+    new = [run, task, str(fewshot), str(r["n"]), f"{r['acc']:.4f}", f"{r['ci95'][0]:.4f}", f"{r['ci95'][1]:.4f}"]
+    idx = next((i for i, row in enumerate(rows) if row[:2] == [run, task]), None)
+    if idx is None:
+        rows.append(new)
+    else:
+        rows[idx] = new  # keep the row's position
     with open(path, "w", newline="", encoding="utf-8") as f:
-        w = csv.writer(f)
+        w = csv.writer(f, lineterminator="\n")
         w.writerow(header)
         w.writerows(rows)
 
