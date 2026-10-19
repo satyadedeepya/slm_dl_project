@@ -1,16 +1,18 @@
-"""GATE CSE previous-year MCQs: download, clean, split, and (optionally) add verified explanations.
+"""Indian CS exam previous-year MCQs (GATE CS, GATE IT/DA, ISRO CSE): download, clean, split, explain.
 
 Source: GATE Overflow previous-year questions as structured by
-github.com/mandalejayesh10-stack/gate-cse-pyq-archive (pinned commit below). Answers are official keys
-or GATE Overflow community-verified answers. GATE papers are copyrighted by IISc/IITs, so the question
-text is NOT committed to this public repository: it is downloaded at build time into the git-ignored
+github.com/mandalejayesh10-stack/gate-cse-pyq-archive (pinned commit below). Besides GATE CS, the archive
+includes GATE IT, GATE DA and ISRO CSE papers. Answers are official keys or GATE Overflow
+community-verified answers. Exam papers are copyrighted (IISc/IITs/ISRO), so the question text is NOT
+committed to this public repository: it is downloaded at build time into the git-ignored
 data/external/gate/ folder, and only question IDs (data/gate_split.json) are committed.
 
 Kept: single-answer MCQs with 4 options from OS, CN, DBMS, Algorithms and Programming & Data Structures,
 excluding questions that refer to a figure. NAT/MSQ items are excluded (the archive has no keys for them).
 
-Split: all papers up to 2020 -> train; papers from 2021-2026 -> 50/50 train/test, stratified by year and
-subject (seed 0). The test half is a held-out evaluation set (eval task `gate`).
+Split: all papers up to 2020 (GATE CS, GATE IT/DA, ISRO) -> train; papers from 2021-2026 (only GATE CS in
+the pinned archive, which the split checks) -> 50/50 train/test, stratified by year and subject (seed 0).
+The test half is a held-out evaluation set of GATE CS questions (eval task `gate`).
 
 Explanations (--explain): Gemini solves each training question WITHOUT seeing the key; an explanation is
 kept only if its final answer equals the official/verified key. Resumable, same quota handling as
@@ -109,7 +111,7 @@ def load_questions() -> list[dict]:
         if FIGURE.search(q["question_text"] + " ".join(opts)):
             continue
         a, b, c, d = (option_text(o) for o in opts)
-        items.append({"id": q["id"], "year": q["year"], "subject": SUBJECTS[q["subject"]],
+        items.append({"id": q["id"], "exam": q["exam"], "year": q["year"], "subject": SUBJECTS[q["subject"]],
                       "gate_subject": q["subject"], "topic": q.get("topic") or q.get("chapter") or "",
                       "question": clean(q["question_text"]), "A": a, "B": b, "C": c, "D": d,
                       "answer": q["correct_answer"], "answer_status": q["answer_status"]})
@@ -130,6 +132,11 @@ def split(items: list[dict], seed: int = 0) -> tuple[list[dict], list[dict]]:
         half = len(qs) // 2 + (rng.random() < 0.5 if len(qs) % 2 else 0)
         test += qs[:half]
         train += qs[half:]
+    # The 2021+ pool of the pinned archive contains only GATE CS papers; fail loudly if that ever changes,
+    # because the test is reported as a GATE CS benchmark.
+    other = sorted({q["exam"] for q in test} - {"GATE"})
+    if other:
+        raise SystemExit(f"test split contains non-GATE-CS exams {other}; revisit the split rule")
     return train, test
 
 
