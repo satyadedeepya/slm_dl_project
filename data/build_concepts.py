@@ -115,7 +115,7 @@ class Gemini:
     def _request(self, url: str, body: dict | None = None) -> dict:
         req = urllib.request.Request(url, data=json.dumps(body).encode() if body is not None else None,
                                      headers={"Content-Type": "application/json", "x-goog-api-key": self.key})
-        with urllib.request.urlopen(req, timeout=300) as r:
+        with urllib.request.urlopen(req, timeout=900) as r:  # batched answers from thinking models can be slow
             return json.loads(r.read())
 
     def list_models(self) -> list[str]:

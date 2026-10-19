@@ -199,7 +199,7 @@ def main():
     ap.add_argument("--explain", action="store_true")
     ap.add_argument("--models", nargs="+", default=DEFAULT_MODELS)
     ap.add_argument("--rpm", type=float, default=8)
-    ap.add_argument("--batch", type=int, default=20)
+    ap.add_argument("--batch", type=int, default=12)
     args = ap.parse_args()
 
     items = load_questions()
