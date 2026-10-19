@@ -10,7 +10,7 @@ The full design is in [PROJECT_PLAN.md](PROJECT_PLAN.md).
 | 1 | OS verified generators (scheduling, paging, Banker's, disk) + tests | ✅ done |
 | 1 | Evaluation harness (`eval/run_eval.py`) | ✅ done (runs on NVIDIA CUDA, Intel Arc XPU or CPU) |
 | 1 | Baselines B0 (zero-shot) / B1 (3-shot) | ✅ done, see [Week 1 report](docs/week1_report.md) and [results](eval/results/RESULTS.md) |
-| 2 | CN + DBMS generators, concept Q&A, dataset build | ✅ built, see [Week 2 report](docs/week2_report.md) and [dataset card](data/DATASET.md). Spider, GATE PYQs and open textbooks added; GATE explanations, textbook Q&A and 25 concept topics pending Gemini quota (`data/run_teacher_jobs.cmd`) |
+| 2 | CN + DBMS generators, concept Q&A, GATE/ISRO PYQs, Spider, open-textbook Q&A, dataset build | ✅ done: 9,335 examples (8,868 train / 467 val). See [Week 2 report](docs/week2_report.md) and [dataset card](data/DATASET.md) |
 | 3 | QLoRA training (FT-A, FT-B) + evaluation | — |
 | 4 | Error analysis, demo, report | — |
 

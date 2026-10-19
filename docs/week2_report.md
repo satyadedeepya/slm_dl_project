@@ -10,9 +10,9 @@
 | DBMS generator: closure, candidate keys, highest normal form, lossless join | ✅ 600 train / 100 held-out |
 | Grader extended: tokens (IPs, bit strings, hex), relative tolerance, attribute sets, key sets, choices | ✅ |
 | Tests: textbook examples + grader edge cases + answer-balance checks | ✅ 36 passing |
-| Concept Q&A pipeline (Gemini teacher, 133 topics) | ✅ 1,183 items from 108 topics; 25 topics pending quota |
+| Concept Q&A pipeline (Gemini teacher, 133 topics) | ✅ 1,458 items from all 133 topics |
 | Public data: MBPP, sql-create-context, CodeAlpaca, alpaca-cleaned | ✅ |
-| Dataset build: dedupe, 13-gram decontamination, length filter, split | ✅ 6,241 train / 329 val |
+| Dataset build: dedupe, 13-gram decontamination, length filter, split | ✅ final: 8,868 train / 467 val (section 7) |
 | Baselines (B0/B1) on the new CN and DBMS test sets | ✅ |
 
 ## 2. New verified generators
@@ -46,10 +46,12 @@
   - moves to the next Flash model when a model's daily quota is used up or it fails 3 times in a row (503 overloads, truncated JSON),
   - caches every finished topic, so a run resumes where it stopped.
 - **Teacher mix:** gemini-3.8-flash 429 items, gemini-3.5-flash-lite 393, gemini-3-flash-preview 263, gemini-3.6-flash 98. The model is recorded per item, so its effect can be analysed later.
-- **Pending:** 25 topics (22 DBMS, 3 CN TCP topics). One batch's answers were lost to an id mismatch, so those topics were re-queued. They need one more day of quota; then `python data/build_concepts.py` and `python data/build_dataset.py` add them.
+- **Completed later:** the remaining 25 topics (22 DBMS, 3 CN TCP; one batch's answers had been lost to an id mismatch) were generated on 19 Oct, bringing the total to 1,458 items.
 - **Spot check:** sampled answers from both the Flash and Flash-Lite models were correct (for example, the Θ-notation proof constants and the Pure ALOHA vulnerable period of 2T). Flash-Lite answers are noticeably shorter.
 
-## 4. The SFT dataset
+## 4. The SFT dataset (first build, 17 Oct)
+
+This section describes the first build. The final dataset, with Spider, exam PYQs and textbook Q&A, is in section 7.
 
 | Source | Subject(s) | Items | Tokens | Quality gate |
 |---|---|---|---|---|
@@ -112,18 +114,32 @@ Text extraction repairs PDF glyph names and ligatures, and skips exercise-heavy 
 
 GATE by subject: CN 5/10, DBMS 3/9, DSA 10/32, OS 1/5. Chance on four options is 25%. These two tasks have no few-shot (B1) variant yet.
 
-**Pending (Gemini free quota):**
-- GATE explanations: about 96 requests
-- Textbook Q&A: about 60 requests
-- The last 25 concept topics: about 9 requests
+## 7. Final Week 2 dataset
 
-`data/run_teacher_jobs.cmd` runs all three in priority order and rebuilds the dataset. Each job resumes where it stopped.
+All teacher jobs finished on 19 Oct (GATE explanations, textbook Q&A and the last 25 concept topics).
 
-## 7. Plan for Week 3
+| Source | Kept | Notes |
+|---|---|---|
+| generator (OS/CN/DBMS) | 2,400 | computed answers |
+| exam PYQs (GATE CS/IT/DA, ISRO CSE) | 978 | 990 of 1,154 explanations reached the official/verified key; 144 disagreed and were dropped |
+| concept Q&A | 1,458 | all 133 topics |
+| textbook Q&A | 1,170 | 4 open books, 285–300 items each |
+| Spider | 1,335 | execution-checked |
+| CodeAlpaca | 1,184 | |
+| MBPP | 311 | tests pass |
+| replay | 499 | |
+| **total** | **9,335** | **8,868 train / 467 val, 2.68M tokens** |
 
-- **FT-B (full mix)** vs **FT-A (no generator slice)**, both evaluated with the same harness against B1, the stronger baseline. Reporting covers McNemar p-values, format-failure rates and per-family accuracy.
-- **Training budget:** about 1.59M training tokens per epoch (FT-A: about 0.70M).
-- **Compute:**
-  - On a T4 with Unsloth, this is roughly 1 hour per run (estimate).
-  - On the local Arc iGPU, 4-bit QLoRA (bitsandbytes) is not dependable, so it would be plain LoRA in fp16 at several hours per epoch (unmeasured).
-  - A short timing run will decide where training happens.
+**By subject:** DBMS 2,451, Programming 1,769, CN 1,724, OS 1,615, DSA 1,277, General 499.
+
+**Notes:**
+- **Teacher agreement:** Flash agreed with the exam answer key about 95% of the time, and Flash-Lite, which wrote about two-thirds of the explanations, about 85%. Disagreeing explanations are dropped, so the weaker teacher lowers yield, not accuracy.
+- **Exam coverage:** the archive also contains ISRO CSE and GATE IT/DA papers (all ≤ 2020); they are training data only. The 56-question test is GATE CS only, and the split code now fails loudly if that ever changes.
+- **Leakage:** decontamination removed 3 exam-PYQ training questions that overlapped an evaluation set.
+- **Public repo:** exam-paper text stays out of it. The committed `sft_*.jsonl` files exclude those items (8,357 examples). The full training files are in the git-ignored `data/external/sft/`.
+
+## 8. Plan for Week 3
+
+- **FT-B (full mix)** vs **FT-A (no generator slice)**, both evaluated with the same harness against B1, the stronger baseline. Reporting covers McNemar p-values, format-failure rates and per-family accuracy on every task (CS-Bench, OS/CN/DBMS numericals, MBPP, Spider dev, GATE test).
+- **Training budget:** about 2.55M training tokens per epoch for FT-B. The generator slice is about 0.88M of these, so FT-A has about 1.66M.
+- **Compute:** a T4 with Unsloth takes roughly 1–1.5 hours per epoch (estimate). On the local Arc iGPU, 4-bit QLoRA is not dependable, so it would be fp16 LoRA (unmeasured). A short timing run will decide where training happens.
