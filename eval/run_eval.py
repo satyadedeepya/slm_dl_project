@@ -76,7 +76,8 @@ class Generator:
         self.device = device
         if adapter:
             from peft import PeftModel
-            self.model = PeftModel.from_pretrained(self.model, adapter)
+            # Merge LoRA weights into the base model so generation runs at base-model speed.
+            self.model = PeftModel.from_pretrained(self.model, adapter).merge_and_unload()
         self.model.eval()
         self.batch_size = batch_size
         self.torch = torch
