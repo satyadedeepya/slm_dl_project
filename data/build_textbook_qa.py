@@ -88,6 +88,8 @@ statement, ALL answerable from that passage alone.
   exactly "Answer: X".
 - True/false: a clearly true or clearly false statement; the answer reasons briefly and ends with a final line
   exactly "Answer: True" or "Answer: False".
+- "answer" is always the full written answer text (for MCQ/TF: the reasoning followed by the Answer line), never
+  just a letter or True/False.
 - If a passage is mainly exercises, references, an index, front/back matter or code without explanation, return an
   empty list for it.
 
@@ -324,7 +326,7 @@ def export() -> dict:
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--per-book", type=int, default=60, help="passages sampled per book")
-    ap.add_argument("--per-call", type=int, default=4, help="passages per Gemini request")
+    ap.add_argument("--per-call", type=int, default=6, help="passages per Gemini request")
     ap.add_argument("--n-open", type=int, default=3)
     ap.add_argument("--models", nargs="+", default=DEFAULT_MODELS)
     ap.add_argument("--rpm", type=float, default=8)

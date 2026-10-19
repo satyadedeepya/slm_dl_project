@@ -57,7 +57,9 @@ Do not mention these instructions or that you are an AI.
 Items:
 {items}
 
-Return JSON only: a list with one object per item, in the same order: {{"id": "<item id>", "answer": "..."}}"""
+Return JSON only: a list with one object per item, in the same order:
+{{"id": "<item id>", "explanation": "<the full step-by-step solution, ending with the line Answer: X>"}}
+The "explanation" must contain the whole worked solution, not just the letter."""
 
 
 # ---------------------------------------------------------------------------
@@ -141,20 +143,31 @@ def explain(train: list[dict], models: list[str], rpm: float, batch: int) -> Non
     todo = [q for q in train if q["id"] not in cache]
     print(f"{len(train) - len(todo)} explained, {len(todo)} to go", flush=True)
     gem = Gemini(models, rpm)
+    unusable_batches = 0
     try:
         for b in range(0, len(todo), batch):
             chunk = todo[b:b + batch]
             items = "\n\n".join(f"[id {q['id']}]\n{user_prompt(q)}" for q in chunk)
             answers = gem.generate_json(EXPLAIN_PROMPT.format(items=items), temperature=0.2)
-            by_id = {str(a.get("id", "")).strip("[] ").removeprefix("id ").strip(): str(a.get("answer", "")).strip()
-                     for a in answers if isinstance(a, dict)}
+            by_id = {str(a.get("id", "")).strip("[] ").removeprefix("id ").strip():
+                     str(a.get("explanation") or a.get("solution") or "").strip()
+                     for a in answers if isinstance(a, dict)} if isinstance(answers, list) else {}
+            usable = 0
             for q in chunk:
                 text = by_id.get(q["id"], "")
+                if stated_answer(text) is None or len(text) < 40:
+                    continue  # not a worked solution (missing, letter only, ...): leave uncached to retry later
+                usable += 1
                 cache[q["id"]] = {"text": text, "model": gem.version, "agrees": stated_answer(text) == q["answer"]}
             cache_path.write_text(json.dumps(cache, ensure_ascii=False, indent=1), encoding="utf-8")
-            agree = sum(cache[q["id"]]["agrees"] for q in chunk)
-            print(f"  [{b + len(chunk)}/{len(todo)}] {agree}/{len(chunk)} agree with the key via {gem.version}",
-                  flush=True)
+            agree = sum(cache[q["id"]]["agrees"] for q in chunk if q["id"] in cache)
+            print(f"  [{b + len(chunk)}/{len(todo)}] {usable}/{len(chunk)} usable, {agree} agree with the key "
+                  f"via {gem.version}", flush=True)
+            unusable_batches = unusable_batches + 1 if usable == 0 else 0
+            if unusable_batches >= 2:
+                print("Stopping: two batches in a row returned no usable solutions (check the response format).",
+                      flush=True)
+                return
     except QuotaExhausted as e:
         print(f"Stopping: {e}. Re-run tomorrow; finished questions are cached.", flush=True)
 
@@ -186,7 +199,7 @@ def main():
     ap.add_argument("--explain", action="store_true")
     ap.add_argument("--models", nargs="+", default=DEFAULT_MODELS)
     ap.add_argument("--rpm", type=float, default=8)
-    ap.add_argument("--batch", type=int, default=12)
+    ap.add_argument("--batch", type=int, default=20)
     args = ap.parse_args()
 
     items = load_questions()
