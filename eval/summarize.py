@@ -99,6 +99,29 @@ def render(data: dict[str, dict]) -> str:
                      if g in data[r]["results"].get(t, {}).get("by_group", {}) else "–" for r in runs]
             out.append(f"| {g} | {n} | " + " | ".join(cells) + " |")
 
+    # Format failures: MCQ/TF answers with no parseable choice. Kept separate so that learning the answer
+    # format is not mistaken for a knowledge gain.
+    fmt_rows = []
+    for t in ("csbench", "gate"):
+        cells = []
+        for r in runs:
+            path = RESULTS / r / f"{t}.jsonl"
+            if not path.exists():
+                cells.append("–")
+                continue
+            with open(path, encoding="utf-8") as f:
+                rows = [json.loads(l) for l in f if l.strip()]
+            unparsed = sum(x.get("pred") is None for x in rows)
+            parsed = [x for x in rows if x.get("pred") is not None]
+            acc_parsed = sum(bool(x["correct"]) for x in parsed) / len(parsed) if parsed else 0.0
+            cells.append(f"{unparsed}/{len(rows)} unparsed; {pct(acc_parsed)} on parsed")
+        if any(c != "–" for c in cells):
+            fmt_rows.append(f"| {TASK_NAMES[t]} | " + " | ".join(cells) + " |")
+    if fmt_rows:
+        out += ["", "## Answer-format failures", "",
+                "Answers with no parseable choice, and accuracy on the parseable ones.", "",
+                "| Task | " + " | ".join(runs) + " |", "|---|" + "---|" * len(runs)] + fmt_rows
+
     out += ["", "## Run settings", "", "| Run | Model | Adapter | Few-shot |", "|---|---|---|---|"]
     for r in runs:
         m = data[r]["meta"]

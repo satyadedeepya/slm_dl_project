@@ -72,6 +72,15 @@ Exact McNemar test on the same items: how many items only the reference got righ
 | DSA | 32 | 31.2 | – |
 | OS | 5 | 20.0 | – |
 
+## Answer-format failures
+
+Answers with no parseable choice, and accuracy on the parseable ones.
+
+| Task | B0_zeroshot | B1_3shot |
+|---|---|---|
+| CS-Bench (DSA/OS/CN, MCQ + T/F) | 21/400 unparsed; 54.1 on parsed | 4/400 unparsed; 58.6 on parsed |
+| GATE MCQ | 7/56 unparsed; 38.8 on parsed | – |
+
 ## Run settings
 
 | Run | Model | Adapter | Few-shot |
