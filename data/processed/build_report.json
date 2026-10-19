@@ -1,9 +1,9 @@
 {
   "loaded": {
     "generator": 2400,
-    "gate": 0,
-    "teacher": 1183,
-    "textbook": 0,
+    "gate": 990,
+    "teacher": 1458,
+    "textbook": 1170,
     "mbpp": 373,
     "spider": 1500,
     "codealpaca": 1200,
@@ -11,6 +11,10 @@
   },
   "dropped": {
     "codealpaca:contamination": 16,
+    "gate:contamination": 3,
+    "gate:exact_duplicate": 3,
+    "gate:near_duplicate": 5,
+    "gate:too_long": 1,
     "mbpp:contamination": 62,
     "replay:contamination": 1,
     "spider:contamination": 1,
@@ -20,26 +24,28 @@
   },
   "kept": {
     "codealpaca": 1184,
+    "gate": 978,
     "generator": 2400,
     "mbpp": 311,
     "replay": 499,
     "spider": 1335,
-    "teacher": 1183
+    "teacher": 1458,
+    "textbook": 1170
   },
   "kept_by_subject": {
-    "CN": 1152,
-    "DBMS": 1978,
-    "DSA": 330,
+    "CN": 1724,
+    "DBMS": 2451,
+    "DSA": 1277,
     "General": 499,
-    "OS": 1184,
+    "OS": 1615,
     "Programming": 1769
   },
-  "train": 6566,
-  "val": 346,
+  "train": 8868,
+  "val": 467,
   "tokens": {
-    "total": 2074695,
-    "mean": 300,
+    "total": 2677157,
+    "mean": 287,
     "max": 1023,
-    "train_total": 1970875
+    "train_total": 2546233
   }
 }
