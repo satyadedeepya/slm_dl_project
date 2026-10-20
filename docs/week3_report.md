@@ -2,7 +2,7 @@
 
 **Week 3 goal (from the plan):** train FT-B (full mix) and FT-A (ablation without the verified generator slice), then evaluate both against the baselines on every task.
 
-> Status: FT-B trained; FT-B evaluation in progress. Results sections are filled in as runs finish.
+> Status: FT-B trained and evaluated; FT-A (ablation) training in progress.
 
 ## 1. Training setup
 
@@ -76,8 +76,46 @@ Validation loss on the 150 held-out SFT examples:
   - The final model is the same as an uninterrupted run, because the data order and optimiser state are restored from the checkpoint.
   - Effective speed was about 62 s per step. Measured from the resume, including the 55-minute pause, the wall time was 4.8 hours.
 
-_Evaluation results for FT-B and FT-A against B0 and B1 (McNemar p-values, per-family breakdowns, format failures) are added as the runs finish._
+### 3.2 FT-B against the baselines
+
+Accuracy in % with the 95% bootstrap CI. The p-value is an exact McNemar test of FT-B against B0 on the same items. Full tables and per-family breakdowns are in [`eval/results/RESULTS.md`](../eval/results/RESULTS.md).
+
+| Task | n | B0 zero-shot | B1 3-shot | **FT-B** zero-shot | Δ vs B0 | p (vs B0) |
+|---|---|---|---|---|---|---|
+| CS-Bench (DSA/OS/CN) | 400 | 51.2 | 58.0 | **55.2** [50.5–60.2] | +4.0 | 0.18 |
+| Verified OS numericals | 100 | 4.0 | 4.0 | **5.0** [1–9] | +1.0 | 1.00 |
+| Verified CN numericals | 100 | 1.0 | 2.0 | **8.0** [3–13] | +7.0 | **0.039** |
+| Verified DBMS FD problems | 100 | 15.0 | 12.0 | **30.0** [21–40] | +15.0 | **0.017** |
+| MBPP pass@1 | 200 | 41.5 | 41.5 | **42.5** [36–49] | +1.0 | 0.89 |
+| Spider dev (execution) | 200 | 50.5 | – | **60.0** [53–66.5] | +9.5 | **0.011** |
+| GATE CS 2021–26 | 56 | 33.9 | – | **33.9** [21–46] | 0.0 | 1.00 |
+
+**Significant gains (p < 0.05):** Spider, the DBMS FD problems and the CN numericals. **No significant change:** CS-Bench, OS numericals, MBPP and GATE. No task got worse.
+
+**Selected breakdowns (B0 → FT-B):**
+- DBMS, FD closure and keys: 3.3 → **32.8** (n = 61). This accounts for almost all of the DBMS gain.
+- CN: subnetting 0 → 9.1, flow control 0 → 11.8, CRC 0 → 7.7.
+- OS: CPU and disk scheduling stay at 0 for all models. Page replacement 3.7 → 7.4.
+- CS-Bench: Knowledge 54.7 → 64.3; Reasoning 45.1 → **38.7** (down); OS 39.8 → 50.0.
+- Format failures on CS-Bench fell from 21/400 to 7/400. On parsed answers only, CS-Bench is 54.1 → 56.2, so part of the CS-Bench gain is better answer formatting, not new knowledge.
+
+_FT-A results are added when that run finishes._
 
 ## 4. Analysis
 
-_To be filled in._
+### 4.1 FT-B (preliminary, before the ablation)
+
+1. **Structured database tasks gain the most.**
+   - Spider (+9.5) and FD closure/keys (+29.5 within that family) are both tasks where the answer is a short, checkable artefact (a SQL query, an attribute set) produced by a fixed procedure.
+   - The training mix had many examples of exactly these procedures: Spider train, and the DBMS generator.
+2. **Long numerical simulations are not learned in one epoch.**
+   - On the OS numericals, FT-B copies the training layout perfectly: all 100 answers have Gantt or frame tables and a "Final answer" line.
+   - But its state tracking is wrong. For example, it marks frames as unchanged while counting faults, or gives negative waiting times.
+   - CPU and disk scheduling stay at 0%. A 1.5B model imitates the shape of a trace without executing it.
+   - **Likely fixes:** more epochs; shorter per-step traces; or tool use, where the model writes code that computes the schedule.
+3. **General ability is kept.** MBPP (+1.0) and GATE (0.0) did not change, so there is no catastrophic forgetting.
+4. **The CS-Bench gain is partly formatting.**
+   - Fewer unparseable answers account for about half of the +4.0.
+   - The Reasoning subset fell by 6.4 points, a possible small cost of training on short-answer MCQs. It is not significant at this n.
+   - 3-shot prompting (B1) is still slightly better than FT-B on CS-Bench (58.0 vs 55.2).
+5. **The FT-A ablation is still needed** to attribute the DBMS and CN gains to the verified generator slice and not to the rest of the mix.
