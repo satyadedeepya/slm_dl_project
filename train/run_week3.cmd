@@ -6,7 +6,7 @@ rem   3. FT-A: no generator slice (ablation)   4. evaluate FT-A
 cd /d %~dp0..
 set HF_HUB_OFFLINE=1
 set PYTHONIOENCODING=utf-8
-set TRAIN=--epochs 1 --batch-size 1 --grad-accum 32 --val-limit 150 --eval-steps 70
+set TRAIN=--epochs 1 --batch-size 1 --grad-accum 32 --val-limit 150 --eval-steps 35
 .venv\Scripts\python -u train\train_lora.py --run-name ft-b %TRAIN% > outputs\ft-b.log 2>&1
 .venv\Scripts\python -u eval\run_eval.py --run-name FT-B --adapter outputs\ft-b\adapter --batch-size 32 --tasks csbench gen_os gen_cn gen_dbms mbpp gate > outputs\eval-ft-b.log 2>&1
 .venv\Scripts\python -u eval\run_eval.py --run-name FT-B --adapter outputs\ft-b\adapter --batch-size 16 --tasks spider >> outputs\eval-ft-b.log 2>&1
