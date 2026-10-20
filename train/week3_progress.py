@@ -36,11 +36,15 @@ def _read(name: str) -> str:
 def train_progress(run: str) -> tuple[float, str]:
     if (OUT / run / "adapter").exists():
         return 1.0, "done"
-    bars = re.findall(r"(\d+)/(\d+) \[[^\]]*?<([0-9:]+)", _read(f"{run}.log").replace("\r", "\n"))
+    bars = re.findall(r"(\d+)/(\d+) \[[^\]]*?<[0-9:]+, *([0-9.]+)s/it", _read(f"{run}.log").replace("\r", "\n"))
+    bars = [b for b in bars if int(b[1]) > 150]  # skip the 150-example validation bars
     if not bars:
         return 0.0, "waiting"
-    done, total, eta = bars[-1]
-    return int(done) / int(total), f"step {done}/{total}, ~{eta} left"
+    done, total = int(bars[-1][0]), int(bars[-1][1])
+    # tqdm's s/it is a running average that a sleep/hibernate pause inflates; use the median recent rate
+    rate = sorted(float(b[2]) for b in bars[-10:])[len(bars[-10:]) // 2]
+    left = int((total - done) * rate)
+    return done / total, f"step {done}/{total}, ~{left // 3600}h{left % 3600 // 60:02d}m left"
 
 
 def eval_progress(log: str) -> tuple[float, str]:
