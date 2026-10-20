@@ -78,8 +78,7 @@ def bar(frac: float, width: int = 20) -> str:
 
 def short() -> str:
     overall, rows = status()
-    current = next(((label, info) for label, f, info in rows if 0 < f < 1),
-                   next(((label, info) for label, f, info in rows if f == 0), ("Week 3", "complete")))
+    current = next(((label, info) for label, f, info in rows if f < 1), ("Week 3", "complete"))
     return f"Week 3 {overall * 100:.0f}% {bar(overall, 10)} | left {100 - overall * 100:.0f}% | {current[0]}: {current[1]}"
 
 
