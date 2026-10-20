@@ -11,3 +11,4 @@ data/concepts/build.*
 eval/results/baselines.done
 data/external/
 eval/results/*/gate.jsonl
+.claude/settings.local.json
