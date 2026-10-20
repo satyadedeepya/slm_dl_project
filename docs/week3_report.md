@@ -2,7 +2,7 @@
 
 **Week 3 goal (from the plan):** train FT-B (full mix) and FT-A (ablation without the verified generator slice), then evaluate both against the baselines on every task.
 
-> Status: FT-B training in progress. Results sections are filled in as runs finish.
+> Status: FT-B trained; FT-B evaluation in progress. Results sections are filled in as runs finish.
 
 ## 1. Training setup
 
@@ -18,7 +18,7 @@
 | Max length | 1,024 tokens (no example is longer) |
 | Sampling | length-grouped batches (less padding) |
 | Epochs | 1 (see 1.1) |
-| Validation | 150 held-out SFT examples every 70 steps; checkpoint at each evaluation (resumable) |
+| Validation | 150 held-out SFT examples every 70 steps and at the end; checkpoint at each evaluation (resumable) |
 | Seed | 42 |
 
 **Runs:**
@@ -57,7 +57,26 @@ Each adapter is merged into the base model and evaluated zero-shot with the same
 
 ## 3. Results
 
-_To be filled in: FT-B and FT-A against B0 and B1, McNemar p-values, per-family breakdowns, format failures._
+### 3.1 Training curves
+
+Validation loss on the 150 held-out SFT examples:
+
+| Step | Epoch | FT-B val loss | FT-A val loss |
+|---|---|---|---|
+| 70 | 0.25 | 0.733 | |
+| 140 | 0.51 | 0.671 | |
+| 210 | 0.76 | 0.656 | |
+| 278 (end) | 1.00 | **0.650** | |
+
+**FT-B notes:**
+- The validation loss fell at every evaluation and was still falling slowly at the end. There is no sign of overfitting after one epoch.
+- The training loss swings between about 0.2 and 1.3 within the epoch. This comes from length-grouped sampling: each step holds examples of similar length, and short generator or MCQ answers have much lower per-token loss than long explanations. The mean training loss over the resumed part of the run (steps 71–278) was 0.80.
+- **Interruptions:**
+  - The run was interrupted twice: a manual sleep at step 101, and a critical-battery hibernate at step 181. The first resumed from `checkpoint-70`. The second paused the process without killing it.
+  - The final model is the same as an uninterrupted run, because the data order and optimiser state are restored from the checkpoint.
+  - Effective speed was about 62 s per step. Measured from the resume, including the 55-minute pause, the wall time was 4.8 hours.
+
+_Evaluation results for FT-B and FT-A against B0 and B1 (McNemar p-values, per-family breakdowns, format failures) are added as the runs finish._
 
 ## 4. Analysis
 
