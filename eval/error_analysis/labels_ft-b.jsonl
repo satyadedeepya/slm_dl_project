@@ -1,0 +1,50 @@
+{"id": "csbench-21", "category": "knowledge", "note": "denies that reliable delivery is the data link layer's basic service"}
+{"id": "csbench-33", "category": "knowledge", "note": "wrong semantics of the HTTP PUT response"}
+{"id": "csbench-44", "category": "inconsistent", "note": "reasoning says cookies are not stored on the server (option A is the incorrect one) but answers B"}
+{"id": "csbench-56", "category": "knowledge", "note": "invents R = S/N x bandwidth instead of Nyquist/Shannon"}
+{"id": "csbench-84", "category": "knowledge", "note": "thinks UDP is unsuitable for real-time multimedia"}
+{"id": "csbench-204", "category": "procedure", "note": "evaluates f(f(1)) as f(4) instead of f(2)"}
+{"id": "csbench-224", "category": "knowledge", "note": "picks the tautological option over 'maximal strongly connected subgraph'"}
+{"id": "csbench-241", "category": "knowledge", "note": "claims appending to an array-based list is O(n)"}
+{"id": "csbench-309", "category": "inconsistent", "note": "reasoning agrees with the statement, answer says False"}
+{"id": "csbench-322", "category": "knowledge", "note": "confuses deadlock avoidance (safe state) with prevention (break a condition)"}
+{"id": "csbench-342", "category": "knowledge", "note": "claims the PCB holds global variables"}
+{"id": "csbench-377", "category": "ambiguous", "note": "awkwardly translated item; intended answer unclear"}
+{"id": "gen_os-4", "category": "procedure", "note": "non-preemptive priority schedule runs 1-unit slices; negative waiting times"}
+{"id": "gen_os-8", "category": "procedure", "note": "preemptive priority ignores priorities and misreads P2's arrival"}
+{"id": "gen_os-12", "category": "procedure", "note": "FCFS head path visits the requests partly sorted instead of in arrival order"}
+{"id": "gen_os-29", "category": "procedure", "note": "picks P2 after P1 although P3 (priority 1) is waiting; inserts a false idle slot"}
+{"id": "gen_os-32", "category": "procedure", "note": "C-SCAN jumps to the lowest request and sweeps up; ignores the end-of-disk and return seek"}
+{"id": "gen_os-57", "category": "procedure", "note": "FCFS ordered by process number instead of arrival time"}
+{"id": "gen_os-59", "category": "procedure", "note": "LRU table grows beyond 4 frames; every reference counted as a fault"}
+{"id": "gen_os-75", "category": "arithmetic", "note": "correct head path and terms, sum 434 written as 386"}
+{"id": "gen_cn-8", "category": "arithmetic", "note": "propagation delay 4000 km / 2e8 m/s computed as 2 ms instead of 20 ms"}
+{"id": "gen_cn-18", "category": "procedure", "note": "/14 converted to 255.255.255.128; boundary octet wrong"}
+{"id": "gen_cn-32", "category": "procedure", "note": "appends 6 zeros for a degree-5 generator; XOR steps misaligned"}
+{"id": "gen_cn-60", "category": "arithmetic", "note": "hex additions and carry wrap wrong from the first step"}
+{"id": "gen_cn-80", "category": "arithmetic", "note": "24000 / 25e6 s written as 9.6 ms instead of 0.96 ms"}
+{"id": "gen_cn-81", "category": "procedure", "note": "modulo-2 division skips bits; non-zero remainder for a valid frame"}
+{"id": "gen_cn-82", "category": "procedure", "note": "/29 converted to 255.255.255.252"}
+{"id": "gen_cn-88", "category": "procedure", "note": "/26 given 2^7 addresses; subnet address 10.58.240.1024 is not a valid IP"}
+{"id": "gen_dbms-5", "category": "procedure", "note": "claims B never appears on a right-hand side (C -> AB) and that B is a key"}
+{"id": "gen_dbms-6", "category": "procedure", "note": "claims C never appears on a right-hand side; misses D and E, which do"}
+{"id": "gen_dbms-10", "category": "procedure", "note": "closure stops after one FD; misses AC -> BE"}
+{"id": "gen_dbms-20", "category": "procedure", "note": "intersection is {B, D}, not {B}; D -> AE makes it lossless"}
+{"id": "gen_dbms-37", "category": "procedure", "note": "intersection is {A, D}, not {A}"}
+{"id": "gen_dbms-49", "category": "procedure", "note": "closure stops after B -> CF; misses C -> D"}
+{"id": "gen_dbms-68", "category": "procedure", "note": "claims B never appears on a right-hand side (AD -> B); wrong key, so wrong normal form"}
+{"id": "gen_dbms-74", "category": "procedure", "note": "closure stops after B -> D; misses F -> CE"}
+{"id": "mbpp-30", "category": "misread", "note": "checks that digits are non-decreasing instead of digit frequencies"}
+{"id": "mbpp-78", "category": "procedure", "note": "loop never terminates for the test inputs"}
+{"id": "mbpp-128", "category": "misread", "note": "returns the difference; the tests expect a boolean"}
+{"id": "mbpp-130", "category": "misread", "note": "wrong function name and wrong condition"}
+{"id": "mbpp-133", "category": "procedure", "note": "not a next-permutation algorithm; returns a boolean"}
+{"id": "mbpp-150", "category": "procedure", "note": "searches the wrong range for divisors"}
+{"id": "mbpp-183", "category": "procedure", "note": "edge case: a single character should be Valid"}
+{"id": "spider-26", "category": "schema_hallucination", "note": "uses column maker on car_makers and the wrong table"}
+{"id": "spider-28", "category": "schema_hallucination", "note": "swaps aliases: Make is on car_names, not cars_data"}
+{"id": "spider-47", "category": "schema_hallucination", "note": "joins a non-existent countries table; also max(birth_date) for the oldest"}
+{"id": "spider-49", "category": "procedure", "note": "groups semesters instead of counting each student's enrolments; drops student_id"}
+{"id": "spider-123", "category": "schema_hallucination", "note": "takes theme from singer instead of concert"}
+{"id": "spider-183", "category": "schema_hallucination", "note": "car_makers has no continent column (resolves to the outer table)"}
+{"id": "spider-185", "category": "schema_hallucination", "note": "adds an invented USA filter and GROUP BY not in the question"}
