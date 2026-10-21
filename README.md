@@ -39,7 +39,11 @@ eval/results/                per-run outputs, summary.csv, RESULTS.md
 train/train_lora.py          LoRA SFT (assistant-only loss, resumable checkpoints, --exclude-source for ablations)
 train/run_week3.cmd          Week 3 pipeline: train + evaluate FT-B, then FT-A (Windows)
 train/week3_progress.py      progress meter read from outputs/*.log
-docs/week{1,2,3}_report.md   weekly reports
+eval/plots.py                accuracy and loss figures -> docs/figures/
+eval/error_sample.py         stratified sample of wrong answers for error analysis
+eval/error_report.py         tallies the hand labels in eval/error_analysis/
+demo/app.py                  Gradio demo: chat + verified practice problems, adapter on/off
+docs/week{1,2,3,4}_report.md weekly reports
 tests/                       textbook cases, property tests, grader tests (36)
 ```
 
@@ -67,6 +71,9 @@ python eval/run_eval.py --run-name B1_3shot --fewshot 3
 python train/train_lora.py --run-name ft-b --epochs 1 --batch-size 1 --grad-accum 32
 python train/train_lora.py --run-name ft-a --exclude-source generator --epochs 1 --batch-size 1 --grad-accum 32
 python eval/run_eval.py --run-name FT-B --adapter outputs/ft-b/adapter --batch-size 32
+
+# Demo at http://127.0.0.1:7860 (needs outputs/ft-b/adapter from the training step)
+python demo/app.py
 
 # Re-score saved outputs (no GPU), then rebuild the comparison table
 python eval/run_eval.py --run-name B0_zeroshot --rescore

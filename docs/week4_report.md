@@ -89,7 +89,22 @@ None of the sampled errors is a format failure. Every numerical answer had a par
 | Knowledge | more concept Q&A for OS/CN (the CS-Bench gaps cluster there) or retrieval from the open textbooks |
 | Inconsistent | train on answers whose final line is checked against the reasoning |
 
-## 2. Figures
+## 2. Demo
+
+`python demo/app.py` starts a Gradio app at http://127.0.0.1:7860. Add `--share` for a temporary public link.
+
+- **Ask the tutor:** a streaming chat with the CSE-Tutor system prompt and example questions.
+- **Verified practice problems:**
+  - Pick OS, CN or DBMS and generate a fresh problem with held-out test parameters.
+  - Let the model solve it; the answer is graded automatically against the computed solution, using the same grader as the evaluation.
+- **Adapter switch:** the LoRA adapter stays separate from the base weights, so the "Use the fine-tuned adapter" checkbox gives the base model's answer to the same question for a side-by-side comparison.
+
+**Test run** (Intel Arc iGPU, fp16; driven through `gradio_client`):
+- A generated DBMS closure problem was answered in about 30 s and graded automatically.
+- FT-B's answer was wrong in exactly the way §1.3 describes: it applied `BF → D` without F in the set, and missed `B → G`. The grader showed the verified answer AB+ = {A, B, G}.
+- A chat question (TCP three-way handshake) streamed a full answer in about 24 s.
+
+## 3. Figures
 
 - `eval/plots.py` writes both figures to `docs/figures/`.
 - The colour palette was checked for colour-vision deficiency (worst adjacent ΔE 9.1).
