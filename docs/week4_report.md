@@ -2,7 +2,7 @@
 
 **Week 4 goal (from the plan):** categorise model errors, produce figures, build a demo, and write the final report.
 
-> Status: error analysis and figures done; demo and final report in progress.
+> Status: error analysis, figures, demo and the [final report](FINAL_REPORT.md) are done.
 
 ## 1. Error analysis of FT-B
 

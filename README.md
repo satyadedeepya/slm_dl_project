@@ -1,7 +1,7 @@
 # CSE-Tutor-1.5B
 
-A QLoRA fine-tune of Qwen2.5-1.5B-Instruct for CSE education (DSA, Programming, DBMS, OS, CN).
-The full design is in [PROJECT_PLAN.md](PROJECT_PLAN.md).
+A LoRA fine-tune of Qwen2.5-1.5B-Instruct for CSE education (DSA, Programming, DBMS, OS, CN), trained on a mix that includes 2,400 programmatically verified OS/CN/DBMS problems.
+The results and findings are in the **[final report](docs/FINAL_REPORT.md)**; the original design is in [PROJECT_PLAN.md](PROJECT_PLAN.md).
 
 ## Status
 
@@ -12,7 +12,7 @@ The full design is in [PROJECT_PLAN.md](PROJECT_PLAN.md).
 | 1 | Baselines B0 (zero-shot) / B1 (3-shot) | ✅ done, see [Week 1 report](docs/week1_report.md) and [results](eval/results/RESULTS.md) |
 | 2 | CN + DBMS generators, concept Q&A, GATE/ISRO PYQs, Spider, open-textbook Q&A, dataset build | ✅ done: 9,335 examples (8,868 train / 467 val). See [Week 2 report](docs/week2_report.md) and [dataset card](data/DATASET.md) |
 | 3 | LoRA training (FT-A ablation, FT-B full mix) + evaluation | ✅ done. FT-B vs base: Spider 50.5 → 60.0, DBMS FD 15 → 30, CN numericals 1 → 8 (all p < 0.05). The FT-A ablation ties these gains to the verified generator data. See [Week 3 report](docs/week3_report.md) |
-| 4 | Error analysis, demo, report | — |
+| 4 | Error analysis, figures, demo, final report | ✅ done. 50 labelled errors (52% procedure / state tracking), Gradio demo (`demo/app.py`). See [Week 4 report](docs/week4_report.md) and the **[final report](docs/FINAL_REPORT.md)** |
 
 ## Layout
 
