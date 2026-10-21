@@ -1,0 +1,176 @@
+{
+  "meta": {
+    "model": "Qwen/Qwen2.5-1.5B-Instruct",
+    "adapter": "outputs\\ft-a\\adapter",
+    "fewshot": 0
+  },
+  "results": {
+    "csbench": {
+      "n": 400,
+      "acc": 0.5375,
+      "ci95": [
+        0.4875,
+        0.5875
+      ],
+      "by_group": {
+        "Assertion": {
+          "n": 100,
+          "acc": 0.61
+        },
+        "CN": {
+          "n": 138,
+          "acc": 0.5652173913043478
+        },
+        "DSA": {
+          "n": 144,
+          "acc": 0.5555555555555556
+        },
+        "Knowledge": {
+          "n": 258,
+          "acc": 0.624031007751938
+        },
+        "Multiple-choice": {
+          "n": 300,
+          "acc": 0.5133333333333333
+        },
+        "OS": {
+          "n": 118,
+          "acc": 0.4830508474576271
+        },
+        "Reasoning": {
+          "n": 142,
+          "acc": 0.38028169014084506
+        }
+      },
+      "seconds": 1355.2
+    },
+    "gen_os": {
+      "n": 100,
+      "acc": 0.03,
+      "ci95": [
+        0.0,
+        0.07
+      ],
+      "by_group": {
+        "cpu_scheduling": {
+          "n": 43,
+          "acc": 0.0
+        },
+        "deadlock": {
+          "n": 12,
+          "acc": 0.0
+        },
+        "disk_scheduling": {
+          "n": 18,
+          "acc": 0.0
+        },
+        "page_replacement": {
+          "n": 27,
+          "acc": 0.1111111111111111
+        }
+      },
+      "seconds": 1319.0
+    },
+    "gen_cn": {
+      "n": 100,
+      "acc": 0.0,
+      "ci95": [
+        0.0,
+        0.0
+      ],
+      "by_group": {
+        "checksum": {
+          "n": 10,
+          "acc": 0.0
+        },
+        "crc": {
+          "n": 26,
+          "acc": 0.0
+        },
+        "delay": {
+          "n": 14,
+          "acc": 0.0
+        },
+        "flow_control": {
+          "n": 17,
+          "acc": 0.0
+        },
+        "subnetting": {
+          "n": 33,
+          "acc": 0.0
+        }
+      },
+      "seconds": 1224.2
+    },
+    "gen_dbms": {
+      "n": 100,
+      "acc": 0.17,
+      "ci95": [
+        0.11,
+        0.25
+      ],
+      "by_group": {
+        "decomposition": {
+          "n": 16,
+          "acc": 0.75
+        },
+        "fd": {
+          "n": 61,
+          "acc": 0.0
+        },
+        "normalization": {
+          "n": 23,
+          "acc": 0.21739130434782608
+        }
+      },
+      "seconds": 1285.0
+    },
+    "mbpp": {
+      "n": 200,
+      "acc": 0.41,
+      "ci95": [
+        0.345,
+        0.475
+      ],
+      "by_group": {},
+      "seconds": 445.3
+    },
+    "gate": {
+      "n": 56,
+      "acc": 0.375,
+      "ci95": [
+        0.25,
+        0.5
+      ],
+      "by_group": {
+        "CN": {
+          "n": 10,
+          "acc": 0.2
+        },
+        "DBMS": {
+          "n": 9,
+          "acc": 0.3333333333333333
+        },
+        "DSA": {
+          "n": 32,
+          "acc": 0.46875
+        },
+        "OS": {
+          "n": 5,
+          "acc": 0.2
+        }
+      },
+      "seconds": 403.3
+    },
+    "spider": {
+      "n": 200,
+      "acc": 0.545,
+      "ci95": [
+        0.48,
+        0.61
+      ],
+      "by_group": {},
+      "seconds": 421.8
+    }
+  }
+}
