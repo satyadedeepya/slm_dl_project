@@ -7,4 +7,7 @@ datasets
 # Textbook text extraction (data/build_textbook_qa.py)
 pypdf
 pylatexenc
-# Week 3 training: unsloth, trl, bitsandbytes (installed in the training notebook)
+# Week 3 training (train/train_lora.py) uses only torch, transformers and peft above
+# Week 4: figures (eval/plots.py) and the demo (demo/app.py)
+matplotlib
+gradio

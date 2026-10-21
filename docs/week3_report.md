@@ -59,6 +59,10 @@ Each adapter is merged into the base model and evaluated zero-shot with the same
 
 ### 3.1 Training curves
 
+![Training and validation loss for FT-B and FT-A](figures/loss.png)
+
+The training loss rises and falls in waves because of length-grouped sampling: batches move between short answers (generator, MCQ), which have low loss, and long explanations, which have high loss.
+
 Validation loss on the 150 held-out SFT examples:
 
 | Epoch | FT-B (step) | FT-B val loss | FT-A (step) | FT-A val loss |
@@ -109,6 +113,8 @@ Accuracy in % with the 95% bootstrap CI. The p-value is an exact McNemar test of
 - Format failures on CS-Bench fell from 21/400 to 7/400. On parsed answers only, CS-Bench is 54.1 → 56.2, so part of the CS-Bench gain is better answer formatting, not new knowledge.
 
 ### 3.3 Ablation: FT-A (no generator data) against FT-B
+
+![Accuracy per task for B0, B1, FT-A and FT-B with 95% CIs](figures/accuracy.png)
 
 The two runs differ only in the verified OS/CN/DBMS generator slice. The p-value is an exact McNemar test of FT-B against FT-A on the same items.
 
