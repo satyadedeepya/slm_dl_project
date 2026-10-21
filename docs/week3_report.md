@@ -2,7 +2,7 @@
 
 **Week 3 goal (from the plan):** train FT-B (full mix) and FT-A (ablation without the verified generator slice), then evaluate both against the baselines on every task.
 
-> Status: FT-B trained and evaluated; FT-A (ablation) training in progress.
+> Status: complete. Both runs trained and evaluated on all 7 tasks.
 
 ## 1. Training setup
 
@@ -18,7 +18,7 @@
 | Max length | 1,024 tokens (no example is longer) |
 | Sampling | length-grouped batches (less padding) |
 | Epochs | 1 (see 1.1) |
-| Validation | 150 held-out SFT examples every 70 steps and at the end; checkpoint at each evaluation (resumable) |
+| Validation | 150 held-out SFT examples (sampled after the run's source exclusion) every 35 steps (FT-A) or 70 steps (FT-B, whose resumed checkpoint kept the original interval) and at the end; checkpoint at each evaluation (resumable) |
 | Seed | 42 |
 
 **Runs:**
@@ -26,7 +26,7 @@
 | Run | Training data | Examples | Tokens | Steps |
 |---|---|---|---|---|
 | **FT-B** | full mix | 8,868 | 2.55M | 278 |
-| **FT-A** | full mix minus the verified OS/CN/DBMS generator slice | ~6,590 | ~1.66M | ~206 |
+| **FT-A** | full mix minus the verified OS/CN/DBMS generator slice | 6,588 | 1.71M | 206 |
 
 The FT-A vs FT-B comparison measures what the verified generator data adds, with everything else held fixed.
 
@@ -61,12 +61,16 @@ Each adapter is merged into the base model and evaluated zero-shot with the same
 
 Validation loss on the 150 held-out SFT examples:
 
-| Step | Epoch | FT-B val loss | FT-A val loss |
-|---|---|---|---|
-| 70 | 0.25 | 0.733 | |
-| 140 | 0.51 | 0.671 | |
-| 210 | 0.76 | 0.656 | |
-| 278 (end) | 1.00 | **0.650** | |
+| Epoch | FT-B (step) | FT-B val loss | FT-A (step) | FT-A val loss |
+|---|---|---|---|---|
+| 0.17 | | | 35 | 0.998 |
+| 0.25 / 0.34 | 70 | 0.733 | 70 | 0.991 |
+| 0.51 | 140 | 0.671 | 105 | 0.973 |
+| 0.68 | | | 140 | 0.958 |
+| 0.76 / 0.85 | 210 | 0.656 | 175 | 0.954 |
+| 1.00 (end) | 278 | **0.650** | 206 | **0.954** |
+
+**The two columns are not directly comparable.** The training script applies the same source exclusion to the validation sample. FT-B is validated on 150 examples from all sources, 48 of them (32%) generator problems, which have very low loss. FT-A is validated on 150 examples with no generator problems, which are mostly long explanations. FT-A's higher loss reflects that harder set, not a worse model. Compare the runs by the task scores in 3.3.
 
 **FT-B notes:**
 - The validation loss fell at every evaluation and was still falling slowly at the end. There is no sign of overfitting after one epoch.
@@ -75,6 +79,11 @@ Validation loss on the 150 held-out SFT examples:
   - The run was interrupted twice: a manual sleep at step 101, and a critical-battery hibernate at step 181. The first resumed from `checkpoint-70`. The second paused the process without killing it.
   - The final model is the same as an uninterrupted run, because the data order and optimiser state are restored from the checkpoint.
   - Effective speed was about 62 s per step. Measured from the resume, including the 55-minute pause, the wall time was 4.8 hours.
+
+**FT-A notes:**
+- Validation loss also fell at every evaluation, flattening out over the last ~60 steps.
+- Mean training loss was 1.03. It is higher than FT-B's because the low-loss generator answers are missing.
+- The run stopped overnight at step 147, when the machine shut down. It resumed from `checkpoint-140` with `train/run_week3_fta.cmd`, at about 64 s per step.
 
 ### 3.2 FT-B against the baselines
 
@@ -99,11 +108,45 @@ Accuracy in % with the 95% bootstrap CI. The p-value is an exact McNemar test of
 - CS-Bench: Knowledge 54.7 → 64.3; Reasoning 45.1 → **38.7** (down); OS 39.8 → 50.0.
 - Format failures on CS-Bench fell from 21/400 to 7/400. On parsed answers only, CS-Bench is 54.1 → 56.2, so part of the CS-Bench gain is better answer formatting, not new knowledge.
 
-_FT-A results are added when that run finishes._
+### 3.3 Ablation: FT-A (no generator data) against FT-B
+
+The two runs differ only in the verified OS/CN/DBMS generator slice. The p-value is an exact McNemar test of FT-B against FT-A on the same items.
+
+| Task | n | B0 | FT-A | FT-B | Δ (B − A) | p (B vs A) | p (A vs B0) |
+|---|---|---|---|---|---|---|---|
+| CS-Bench | 400 | 51.2 | 53.8 | 55.2 | +1.4 | 0.57 | 0.42 |
+| Verified OS numericals | 100 | 4.0 | 3.0 | 5.0 | +2.0 | 0.73 | 1.00 |
+| Verified CN numericals | 100 | 1.0 | 0.0 | **8.0** | +8.0 | **0.008** | 1.00 |
+| Verified DBMS FD problems | 100 | 15.0 | 17.0 | **30.0** | +13.0 | 0.060 | 0.79 |
+| MBPP pass@1 | 200 | 41.5 | 41.0 | 42.5 | +1.5 | 0.66 | 1.00 |
+| Spider dev | 200 | 50.5 | 54.5 | **60.0** | +5.5 | 0.052 | 0.35 |
+| GATE CS 2021–26 | 56 | 33.9 | **37.5** | 33.9 | −3.6 | 0.82 | 0.80 |
+
+**Selected breakdowns (B0 / FT-A / FT-B):**
+- DBMS, FD closure and keys (n = 61): 3.3 / **0.0** / **32.8**. Without the generator, fine-tuning does nothing on this family.
+- DBMS decomposition (n = 16): 50.0 / 75.0 / 43.8. Normalisation (n = 23): 21.7 / 21.7 / 13.0. These subsets are small and noisy.
+- CN, every family: FT-A scores 0. Only 26 of its 100 answers end with a "Final answer" line, against 100 of 100 for FT-B.
+- CS-Bench Reasoning: 45.1 / 38.0 / 38.7. The drop appears in **both** runs, so it comes from the shared part of the mix, not from the generator data.
+- GATE DSA (n = 32): 31.2 / 46.9 / 28.1. With n = 32, this is 5 more questions right, which is not significant.
 
 ## 4. Analysis
 
-### 4.1 FT-B (preliminary, before the ablation)
+### 4.1 What the verified generator data adds
+
+1. **The generator slice is responsible for the numerical-problem gains.**
+   - CN: 0 → 8 (p = 0.008).
+   - FD closure and keys: 0 → 32.8 within the family; 17 → 30 overall (p = 0.06).
+   - FT-A, trained on the same mix minus the generators, stays at the base-model level on these tasks. Teacher explanations, textbook Q&A and GATE PYQs alone did not teach the procedures.
+2. **The gain is specific, not general.**
+   - On CS-Bench, MBPP and GATE, FT-A and FT-B are within noise of each other.
+   - The generator data neither helps nor hurts conceptual MCQs or coding.
+3. **Spider improves more with the generator data** (54.5 → 60.0, p = 0.052, borderline).
+   - One possible reason: the DBMS generator's relational reasoning (keys, FDs) transfers to SQL.
+   - **Confound:** FT-B also trains for 35% more steps and tokens. More training alone could explain part of this difference, and the same applies to every FT-B vs FT-A gap. A size-matched control (FT-A trained to 278 steps) would separate the two effects; it is left as future work.
+4. **The rest of the mix gives small, non-significant gains on its own** (FT-A vs B0):
+   - CS-Bench +2.6, Spider +4.0, GATE +3.6, with all p > 0.3.
+
+### 4.2 FT-B in detail
 
 1. **Structured database tasks gain the most.**
    - Spider (+9.5) and FD closure/keys (+29.5 within that family) are both tasks where the answer is a short, checkable artefact (a SQL query, an attribute set) produced by a fixed procedure.
@@ -113,9 +156,20 @@ _FT-A results are added when that run finishes._
    - But its state tracking is wrong. For example, it marks frames as unchanged while counting faults, or gives negative waiting times.
    - CPU and disk scheduling stay at 0%. A 1.5B model imitates the shape of a trace without executing it.
    - **Likely fixes:** more epochs; shorter per-step traces; or tool use, where the model writes code that computes the schedule.
-3. **General ability is kept.** MBPP (+1.0) and GATE (0.0) did not change, so there is no catastrophic forgetting.
+3. **General ability is kept.** MBPP and GATE did not change significantly in either run, so there is no catastrophic forgetting.
 4. **The CS-Bench gain is partly formatting.**
    - Fewer unparseable answers account for about half of the +4.0.
-   - The Reasoning subset fell by 6.4 points, a possible small cost of training on short-answer MCQs. It is not significant at this n.
+   - The Reasoning subset fell by about 6–7 points in both FT-A and FT-B, a possible small cost of training on short-answer MCQs and explanations. It is not significant at this n.
    - 3-shot prompting (B1) is still slightly better than FT-B on CS-Bench (58.0 vs 55.2).
-5. **The FT-A ablation is still needed** to attribute the DBMS and CN gains to the verified generator slice and not to the rest of the mix.
+
+### 4.3 Conclusions for Week 4
+
+- **FT-B is the model to carry forward** for the demo and the final report. It is the best run on 5 of 7 tasks; 3-shot B1 leads on CS-Bench and FT-A on GATE, both within noise. It is never significantly worse than B0.
+- **The project's main claim holds, with limits.**
+  - Verified, programmatically generated training data teaches procedures that the base model and the rest of the mix do not: FD closure/keys, subnetting and CRC.
+  - It does not, in one epoch, teach long simulations such as CPU and disk scheduling.
+- **Limitations to state in the final report:**
+  - One epoch per run.
+  - FT-B has more training steps than FT-A (the confound above).
+  - n = 56 for GATE.
+  - One seed per configuration.

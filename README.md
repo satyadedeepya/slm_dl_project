@@ -11,7 +11,7 @@ The full design is in [PROJECT_PLAN.md](PROJECT_PLAN.md).
 | 1 | Evaluation harness (`eval/run_eval.py`) | ✅ done (runs on NVIDIA CUDA, Intel Arc XPU or CPU) |
 | 1 | Baselines B0 (zero-shot) / B1 (3-shot) | ✅ done, see [Week 1 report](docs/week1_report.md) and [results](eval/results/RESULTS.md) |
 | 2 | CN + DBMS generators, concept Q&A, GATE/ISRO PYQs, Spider, open-textbook Q&A, dataset build | ✅ done: 9,335 examples (8,868 train / 467 val). See [Week 2 report](docs/week2_report.md) and [dataset card](data/DATASET.md) |
-| 3 | QLoRA training (FT-A, FT-B) + evaluation | — |
+| 3 | LoRA training (FT-A ablation, FT-B full mix) + evaluation | ✅ done. FT-B vs base: Spider 50.5 → 60.0, DBMS FD 15 → 30, CN numericals 1 → 8 (all p < 0.05). The FT-A ablation ties these gains to the verified generator data. See [Week 3 report](docs/week3_report.md) |
 | 4 | Error analysis, demo, report | — |
 
 ## Layout
@@ -36,7 +36,10 @@ eval/summarize.py            builds eval/results/RESULTS.md (CIs, McNemar tests,
 eval/run_baselines.cmd       runs B0 and B1 on every task (Windows)
 eval/baseline_colab.ipynb    Week-1 baseline notebook (Colab alternative)
 eval/results/                per-run outputs, summary.csv, RESULTS.md
-docs/week{1,2}_report.md     weekly reports
+train/train_lora.py          LoRA SFT (assistant-only loss, resumable checkpoints, --exclude-source for ablations)
+train/run_week3.cmd          Week 3 pipeline: train + evaluate FT-B, then FT-A (Windows)
+train/week3_progress.py      progress meter read from outputs/*.log
+docs/week{1,2,3}_report.md   weekly reports
 tests/                       textbook cases, property tests, grader tests (36)
 ```
 
@@ -59,6 +62,11 @@ python -m data.generators.os_gen --n 100 --seed 2026 --split test --out data/pro
 # Evaluate (GPU)
 python eval/run_eval.py --run-name B0_zeroshot
 python eval/run_eval.py --run-name B1_3shot --fewshot 3
+
+# Fine-tune (adapter -> outputs/<run>/adapter) and evaluate the merged model
+python train/train_lora.py --run-name ft-b --epochs 1 --batch-size 1 --grad-accum 32
+python train/train_lora.py --run-name ft-a --exclude-source generator --epochs 1 --batch-size 1 --grad-accum 32
+python eval/run_eval.py --run-name FT-B --adapter outputs/ft-b/adapter --batch-size 32
 
 # Re-score saved outputs (no GPU), then rebuild the comparison table
 python eval/run_eval.py --run-name B0_zeroshot --rescore
@@ -95,5 +103,5 @@ Textbooks differ on tie-breaking, so each question states its convention, and th
 
 ## Evaluation data notes
 - **CS-Bench** (CC BY-NC 4.0) is used only for evaluation. The English test split is filtered to DSA, OS and CN multiple-choice and true/false questions, and a stratified sample of 400 is taken. Few-shot examples come from its separate validation split.
-- **GATE:** no public dataset with answer keys was found. The Kaggle GATE set is for topic classification. To include GATE, build a JSONL of about 200 past-paper MCQs (`question, A, B, C, D, answer, subject`) and pass it with `--gate-file`.
+- **GATE:** `data/build_gate.py` builds the PYQ set from a pinned public archive. Papers up to 2020 are used for training; 2021–2026 are split between training and a held-out GATE CS test set (n = 56). The exam text is git-ignored and never pushed; only scores are committed.
 - **Spider:** download it from https://yale-lily.github.io/spider and pass the folder with `--spider-dir`.
