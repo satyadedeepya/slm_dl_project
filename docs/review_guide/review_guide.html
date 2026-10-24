@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CSE-Tutor Review Guide</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Print guide, A4, single column. Accent = blackboard green (same as the chat interface);
+   "novelty" boxes use a warm amber so the new ideas stand out on every page. */
+@page { size: A4; margin: 16mm 17mm 18mm; }
+:root {
+  --ink: #1d1f1c; --ink-2: #4c504a; --line: #d9dbd4; --paper: #ffffff; --tint: #f3f5f1;
+  --accent: #2f6b4f; --accent-soft: #e4efe8; --novel: #a86400; --novel-soft: #fdf3e2; --warn: #9a3b26; --warn-soft: #fbece7;
+  --serif: "Source Serif 4", Georgia, serif; --sans: "IBM Plex Sans", "Segoe UI", Arial, sans-serif; --mono: "IBM Plex Mono", Consolas, monospace;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 9.9pt/1.48 var(--sans); }
+h1, h2, h3 { font-family: var(--serif); line-height: 1.2; text-wrap: balance; }
+h2 { font-size: 17pt; margin: 0 0 8pt; color: var(--accent); break-after: avoid; }
+h3 { font-size: 12.5pt; margin: 14pt 0 5pt; break-after: avoid; }
+p { margin: 0 0 7pt; }
+ul, ol { margin: 0 0 8pt; padding-left: 17pt; }
+li { margin-bottom: 3pt; }
+code { font: 9pt var(--mono); background: var(--tint); padding: 0.5pt 4pt; border-radius: 3pt; }
+b { font-weight: 600; }
+section { break-before: page; }
+section.first { break-before: auto; }
+.kicker { font: 600 8pt var(--sans); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-2); margin-bottom: 3pt; }
+
+/* cover */
+.cover { height: 255mm; display: flex; flex-direction: column; justify-content: space-between; }
+.cover .top { border-top: 6pt solid var(--accent); padding-top: 16pt; }
+.cover h1 { font-size: 34pt; margin: 6pt 0 10pt; letter-spacing: -0.01em; }
+.cover .sub { font: 400 14pt/1.4 var(--serif); color: var(--ink-2); max-width: 150mm; }
+.cover .meta { font-size: 10pt; color: var(--ink-2); }
+.cover .chips { display: flex; flex-wrap: wrap; gap: 5pt; margin-top: 14pt; }
+.chip { font: 500 8.5pt var(--mono); border: 0.8pt solid var(--line); border-radius: 20pt; padding: 2pt 9pt; }
+.bignums { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8pt; }
+.bignums div { border-top: 1.2pt solid var(--ink); padding-top: 5pt; }
+.bignums b { display: block; font: 700 21pt/1.1 var(--serif); }
+.bignums span { font-size: 8.5pt; color: var(--ink-2); }
+
+/* boxes */
+.box { border-radius: 5pt; padding: 8pt 11pt; margin: 8pt 0 10pt; break-inside: avoid; }
+.box > :last-child { margin-bottom: 0; }
+.box .t { font: 600 8pt var(--sans); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 3pt; }
+.novel { background: var(--novel-soft); border-left: 3pt solid var(--novel); }
+.novel .t { color: var(--novel); }
+.simple { background: var(--accent-soft); border-left: 3pt solid var(--accent); }
+.simple .t { color: var(--accent); }
+.honest { background: var(--warn-soft); border-left: 3pt solid var(--warn); }
+.honest .t { color: var(--warn); }
+
+table { width: 100%; border-collapse: collapse; margin: 5pt 0 10pt; font-size: 9.2pt; break-inside: avoid; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 3.5pt 6pt; border-bottom: 0.6pt solid var(--line); vertical-align: top; }
+thead th { border-bottom: 1.2pt solid var(--ink); font-weight: 600; background: var(--tint); }
+td.n, th.n { text-align: right; }
+.up { color: var(--accent); font-weight: 600; }
+
+/* pipeline diagram */
+.flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5pt; margin: 8pt 0 12pt; break-inside: avoid; }
+.flow div { border: 0.9pt solid var(--accent); border-radius: 5pt; padding: 6pt 6pt 7pt; position: relative; background: #fff; }
+.flow div b { display: block; font: 600 9.5pt var(--sans); color: var(--accent); margin-bottom: 2pt; }
+.flow div span { font-size: 8.3pt; color: var(--ink-2); line-height: 1.35; display: block; }
+.flow div:not(:last-child)::after { content: "→"; position: absolute; right: -8pt; top: 40%; color: var(--accent); font-weight: 700; }
+.steps { counter-reset: s; list-style: none; padding: 0; }
+.steps > li { counter-increment: s; position: relative; padding-left: 24pt; margin-bottom: 7pt; }
+.steps > li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 16pt; height: 16pt; border-radius: 50%; background: var(--accent);
+  color: #fff; font: 600 8.5pt/16pt var(--sans); text-align: center; }
+figure { margin: 6pt 0 10pt; break-inside: avoid; }
+figure img { width: 100%; border: 0.6pt solid var(--line); }
+figcaption { font-size: 8.5pt; color: var(--ink-2); margin-top: 3pt; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 12pt; }
+.qa dt { font-weight: 600; margin-top: 5pt; break-after: avoid; }
+.qa dd { margin: 2pt 0 0; color: var(--ink); break-inside: avoid; }
+.example { font: 8.8pt/1.45 var(--mono); background: var(--tint); border-radius: 4pt; padding: 7pt 9pt; white-space: pre-wrap; margin: 5pt 0 9pt; break-inside: avoid; }
+.toc li { margin-bottom: 2pt; }
+</style>
+</head>
+<body>
+
+<!-- ============ COVER ============ -->
+<section class="first cover">
+  <div class="top">
+    <div class="kicker">Project review guide · beginner friendly</div>
+    <h1>CSE-Tutor 1.5B</h1>
+    <div class="sub">How we taught a small AI model to tutor six Computer Science subjects, step by step, with training data whose answers are checked by code.</div>
+    <div class="chips"><span class="chip">DSA</span><span class="chip">Programming</span><span class="chip">DBMS</span><span class="chip">Operating Systems</span><span class="chip">Computer Networks</span><span class="chip">Deep Learning</span></div>
+  </div>
+  <div>
+    <div class="bignums">
+      <div><b>9,335</b><span>examples in the main training mix (plus a 2,107-example DL stage)</span></div>
+      <div><b>3,000</b><span>problems with code-verified answers</span></div>
+      <div><b>50.5 → 60.0</b><span>Spider SQL accuracy, base → fine-tuned</span></div>
+      <div><b>1 laptop</b><span>everything trained on an integrated GPU</span></div>
+    </div>
+    <p class="meta" style="margin-top:16pt">Satya Dedeepya · Deep Learning course project · Code: github.com/satyadedeepya/slm_dl_project<br>
+    Base model: Qwen2.5-1.5B-Instruct · Method: LoRA fine-tuning · Hardware: Intel Core Ultra 5 laptop (Arc iGPU)</p>
+  </div>
+</section>
+
+<!-- ============ CONTENTS + ONE-PAGE SUMMARY ============ -->
+<section>
+  <div class="kicker">Start here</div>
+  <h2>The whole project on one page</h2>
+  <div class="box simple"><div class="t">In one sentence</div>
+  <p>We took a small, free AI model that runs on a laptop, taught it Computer Science using carefully checked training data, and then measured fairly whether it actually got better.</p></div>
+
+  <h3>The problem</h3>
+  <p>Students need help with CS subjects, especially <b>numerical problems</b> like CPU scheduling, page faults, subnetting, normal forms and CNN output sizes. Big AI models (like ChatGPT) are good at this but need the internet and can cost money. Small models run on your own laptop for free, but they get these numerical problems wrong.</p>
+
+  <h3>What we did, in five steps</h3>
+  <div class="flow">
+    <div><b>1. Baseline</b><span>Measured how good the untrained model is.</span></div>
+    <div><b>2. Data</b><span>Built 9,335 examples, including 2,400 code-verified problems.</span></div>
+    <div><b>3. Train</b><span>Fine-tuned with LoRA: FT-B (full) and FT-A (without verified data).</span></div>
+    <div><b>4. Analyse</b><span>Tested on unseen questions, checked statistics, studied 50 mistakes.</span></div>
+    <div><b>5. Extend</b><span>Added Deep Learning (FT-C), a chat app and a research paper.</span></div>
+  </div>
+
+  <h3>What we found</h3>
+  <ul>
+    <li><b>Fine-tuning worked where the data was strong:</b> SQL writing went from 50.5% to 60.0%, database (FD) problems from 15% to 30%, networking numericals from 1% to 8%. All three are statistically significant.</li>
+    <li><b>The verified data is the reason.</b> A copy of the model trained without it (FT-A) did not improve on these problems at all.</li>
+    <li><b>Nothing broke:</b> coding ability (MBPP) stayed the same.</li>
+    <li><b>Deep Learning was added in about 70 minutes of training</b> without losing earlier skills; the share of correct DL numbers rose from 15.8% to 26.0%.</li>
+    <li><b>Honest weakness:</b> the model learns the <i>method</i> but still makes calculation and step-tracking mistakes in long problems.</li>
+  </ul>
+
+  <h3>Contents</h3>
+  <ol class="toc">
+    <li>Basic ideas you need (AI model, fine-tuning, LoRA, evaluation)</li>
+    <li>What is new in this project (novelty)</li>
+    <li>Step 1: Planning and the baseline</li>
+    <li>Step 2: Building the dataset</li>
+    <li>Step 3: Training on a laptop</li>
+    <li>Step 4: Results, explained</li>
+    <li>Step 5: Error analysis</li>
+    <li>Step 6: Adding Deep Learning</li>
+    <li>Step 7: The chat app, demo and paper</li>
+    <li>How to run everything · Viva questions · Glossary</li>
+  </ol>
+</section>
+
+<!-- ============ BASICS ============ -->
+<section>
+  <div class="kicker">Chapter 1</div>
+  <h2>Basic ideas you need</h2>
+
+  <h3>What is a language model?</h3>
+  <p>A language model is a program that has read a huge amount of text and learned to predict the next word. When you ask it a question, it writes an answer one word (token) at a time. ChatGPT and Claude are <b>large</b> language models with hundreds of billions of parameters.</p>
+  <p>A <b>parameter</b> is one number inside the model that was learned during training. More parameters usually means more knowledge, but also more memory and a more expensive computer.</p>
+
+  <h3>What is a small language model (SLM)?</h3>
+  <p>We used <b>Qwen2.5-1.5B-Instruct</b>, which has 1.5 billion parameters. That is small enough to run on a normal laptop with no internet and no cost. The catch: out of the box it scored only 4% on OS numericals and 1% on CN numericals in our tests.</p>
+
+  <h3>What is fine-tuning?</h3>
+  <div class="box simple"><div class="t">Analogy</div>
+  <p>The base model is like a student who has read a lot of general books. Fine-tuning is like giving that student a focused <b>CSE workbook with worked solutions</b>, so they learn the exact style and steps examiners expect.</p></div>
+  <p>Technically, we show the model thousands of (question, ideal answer) pairs and slightly adjust its parameters so that it becomes more likely to produce the ideal answers. This is called <b>supervised fine-tuning (SFT)</b>.</p>
+
+  <h3>What is LoRA, and why use it?</h3>
+  <p>Changing all 1.5 billion parameters needs a lot of memory. <b>LoRA (Low-Rank Adaptation)</b> freezes the original model and adds small "adapter" matrices next to its layers. Only the adapters are trained.</p>
+  <ul>
+    <li>We trained only <b>18.5 million parameters (1.18%)</b> of the model.</li>
+    <li>The adapter is a small file (about 70 MB) that can be switched on or off. That is how our chat app can compare "fine-tuned" vs "base" instantly.</li>
+    <li>Key settings: rank r = 16, alpha = 32, learning rate 0.0002, one pass over the data (1 epoch).</li>
+  </ul>
+
+  <h3>How do we know if the model improved? (Evaluation)</h3>
+  <ul>
+    <li><b>Held-out test sets:</b> questions the model never saw during training. Testing on training questions would be like grading a student on the exact homework they copied.</li>
+    <li><b>Accuracy:</b> percentage of questions answered correctly.</li>
+    <li><b>Confidence interval (CI):</b> a range showing how much the score could change by luck. "55% [50–60]" means the true score is very likely between 50% and 60%.</li>
+    <li><b>p-value (McNemar test):</b> compares two models on the <i>same</i> questions. If p &lt; 0.05, the difference is very unlikely to be luck. We call that "significant".</li>
+  </ul>
+  <div class="box simple"><div class="t">Why statistics matter</div>
+  <p>With 100 test questions, getting 3 more right can happen by chance. Many student projects report "accuracy went up" without checking this. We checked every claim.</p></div>
+</section>
+
+<!-- ============ NOVELTY ============ -->
+<section>
+  <div class="kicker">Chapter 2</div>
+  <h2>What is new in this project (novelty)</h2>
+  <p>Most similar projects follow one recipe: ask ChatGPT to write thousands of Q&amp;A pairs, fine-tune on them, show that a score went up. Our project differs in five ways.</p>
+
+  <div class="box novel"><div class="t">Novelty 1 · Answers verified by code, not by AI</div>
+  <p>For OS, CN, DBMS and Deep Learning we wrote Python <b>generators</b>. Each one creates a random problem and then <b>runs the real algorithm</b> to compute the answer: it simulates the CPU schedule, the page-replacement frames, the CRC division, the attribute closure, the convolution. So every one of the 3,000 training answers is <b>correct by construction</b>.</p>
+  <p>AI-written answers can contain mistakes, and a small model copies them. Ours cannot. The generators are themselves tested against textbook examples (Silberschatz) and, for Deep Learning, against <b>PyTorch</b>, which computes the same answers independently.</p></div>
+
+  <div class="box novel"><div class="t">Novelty 2 · A controlled experiment (ablation) proving the data matters</div>
+  <p>We trained two models that differ in exactly one thing: <b>FT-B</b> got the verified problems, <b>FT-A</b> did not. FT-B improved on numericals; FT-A did not move from the base model. This shows the improvement comes from the verified data, not just from "more training".</p></div>
+
+  <div class="box novel"><div class="t">Novelty 3 · AI-written data is filtered by agreement with official keys</div>
+  <p>For GATE/ISRO past questions, Gemini wrote explanations <b>without seeing the answer key</b>. We kept an explanation only if Gemini's answer matched the official key (990 of 1,154 kept). Wrong reasoning was thrown away instead of being learned.</p></div>
+
+  <div class="box novel"><div class="t">Novelty 4 · Fair and careful testing</div>
+  <ul>
+    <li>Test questions are never in training: we removed overlaps with a 13-word matching check, and the generator test sets use different number ranges.</li>
+    <li>GATE papers are split by year: up to 2020 for training, and half of 2021–2026 kept only for testing.</li>
+    <li>Every score has a confidence interval and a significance test.</li>
+    <li>"Format failures" (answer not written in the expected form) are counted separately, so learning the format is not mistaken for learning the subject.</li>
+  </ul></div>
+
+  <div class="box novel"><div class="t">Novelty 5 · Everything on a laptop, with a usable product</div>
+  <p>All training and testing ran on an <b>integrated Intel GPU</b>, not a cloud server. We solved real engineering problems (memory limits, the GPU not supporting 4-bit models, laptop sleep interrupting training) and delivered a working <b>chat app</b> with model switching, a <b>practice app</b> that grades the model automatically, and a <b>research paper</b>.</p></div>
+
+  <p>In addition, the <b>error analysis</b> (Chapter 7) gives a clear finding: the model fails mainly at <i>executing</i> procedures, not at knowing them. That points to specific next steps.</p>
+</section>
+
+<!-- ============ STEP 1 ============ -->
+<section>
+  <div class="kicker">Chapter 3 · Week 1</div>
+  <h2>Step 1: Planning and the baseline</h2>
+  <ol class="steps">
+    <li><b>Research.</b> We read the key papers (LoRA, QLoRA, Qwen2.5, CS-Bench, GuideLM, Self-Instruct, catastrophic forgetting) and surveyed datasets. The plan is in <code>PROJECT_PLAN.md</code>.</li>
+    <li><b>Chose the base model:</b> Qwen2.5-1.5B-Instruct, small enough for a laptop and good at following instructions.</li>
+    <li><b>Wrote the first generators (OS):</b> CPU scheduling (FCFS, SJF, SRTF, Round Robin, Priority), page replacement (FIFO, LRU, Optimal), Banker's algorithm, disk scheduling (FCFS, SSTF, SCAN, C-SCAN, LOOK, C-LOOK). Tests check them against textbook worked examples.</li>
+    <li><b>Built the evaluation harness</b> (<code>eval/run_eval.py</code>): one program that asks the model every test question, grades the answers and saves everything.</li>
+    <li><b>Measured the baseline:</b> the untrained model, asked directly (B0, "zero-shot") and with 3 worked examples in the prompt (B1, "3-shot").</li>
+  </ol>
+
+  <h3>What a generated problem looks like</h3>
+  <div class="example">Question: Disk requests arrive for cylinders 83, 73, 36, 68, 118, 77, 67, 185, 130.
+The head starts at 164. Compute the total head movement under FCFS.
+
+Solution (computed by code):
+Head path: 164 → 83 → 73 → 36 → 68 → 118 → 77 → 67 → 185 → 130
+Total = 81 + 10 + 37 + 32 + 50 + 41 + 10 + 118 + 55 = 434 cylinders
+Final answer: 434 cylinders</div>
+  <p>Every answer ends with a <b>"Final answer:"</b> line, so a grader program can check it automatically.</p>
+
+  <h3>Baseline finding</h3>
+  <table>
+    <thead><tr><th>Test</th><th class="n">B0 zero-shot</th><th class="n">B1 3-shot</th></tr></thead>
+    <tbody>
+      <tr><td>CS-Bench (concept MCQs)</td><td class="n">51.2%</td><td class="n">58.0%</td></tr>
+      <tr><td>OS numericals</td><td class="n">4%</td><td class="n">4%</td></tr>
+      <tr><td>CN numericals</td><td class="n">1%</td><td class="n">2%</td></tr>
+      <tr><td>DBMS FD problems</td><td class="n">15%</td><td class="n">12%</td></tr>
+      <tr><td>MBPP (Python coding)</td><td class="n">41.5%</td><td class="n">41.5%</td></tr>
+    </tbody>
+  </table>
+  <div class="box simple"><div class="t">What this means</div><p>The base model can answer some concept questions, but it is almost useless on numericals, and showing it 3 examples does not help. This is the gap the project targets.</p></div>
+</section>
+
+<!-- ============ STEP 2 ============ -->
+<section>
+  <div class="kicker">Chapter 4 · Week 2</div>
+  <h2>Step 2: Building the dataset</h2>
+  <p>A model is only as good as what it learns from. We combined eight sources, each with its own quality check:</p>
+  <table>
+    <thead><tr><th>Source</th><th class="n">Examples</th><th>What it teaches</th><th>Quality check</th></tr></thead>
+    <tbody>
+      <tr><td><b>Verified generators</b> (OS, CN, DBMS)</td><td class="n">2,400</td><td>numerical problem solving</td><td>answers computed by code</td></tr>
+      <tr><td>GATE / ISRO past questions</td><td class="n">978</td><td>exam-style MCQs with explanations</td><td>kept only if the explanation matches the official key</td></tr>
+      <tr><td>Concept Q&amp;A (Gemini)</td><td class="n">1,458</td><td>theory across a 133-topic syllabus</td><td>MCQ/TF answers must match the key</td></tr>
+      <tr><td>Open textbooks Q&amp;A</td><td class="n">1,170</td><td>grounded explanations</td><td>answerable from the textbook passage</td></tr>
+      <tr><td>Spider</td><td class="n">1,335</td><td>writing SQL from English</td><td>the correct SQL must run</td></tr>
+      <tr><td>MBPP + CodeAlpaca</td><td class="n">1,495</td><td>Python programming</td><td>tests pass / code parses</td></tr>
+      <tr><td>Replay (general)</td><td class="n">499</td><td>keeps general ability</td><td>length filter</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Cleaning steps</h3>
+  <ol class="steps">
+    <li><b>Remove near-duplicates</b> (MinHash), so the model does not memorise repeated questions.</li>
+    <li><b>Remove test-set overlap</b> (13-word matching against every test set). This protects the fairness of the results.</li>
+    <li><b>Length filter:</b> at most 1,024 tokens per example, which fits the laptop's memory.</li>
+    <li><b>Split:</b> 8,868 training and 467 validation examples (2.68 million tokens in total).</li>
+  </ol>
+
+  <div class="box simple"><div class="t">Why Gemini was used carefully</div>
+  <p>Gemini's free tier allows about 20 requests per model per day, so the work was spread over several days and several Gemini models, with caching so nothing was asked twice. Whenever Gemini produced an answer that could be checked against a key, it was checked.</p></div>
+
+  <div class="box honest"><div class="t">Responsible handling</div>
+  <p>Exam papers (GATE/ISRO) are copyrighted, so their text is used for training but <b>never uploaded</b> to the public GitHub repository. Textbooks used are openly licensed (CC BY / CC BY-SA). The API key is stored locally and never committed.</p></div>
+</section>
+
+<!-- ============ STEP 3 ============ -->
+<section>
+  <div class="kicker">Chapter 5 · Week 3</div>
+  <h2>Step 3: Training on a laptop</h2>
+  <p>We trained two models with identical settings so that the comparison is fair:</p>
+  <table>
+    <thead><tr><th>Model</th><th>Training data</th><th class="n">Examples</th><th class="n">Steps</th><th class="n">Time</th></tr></thead>
+    <tbody>
+      <tr><td><b>FT-B</b></td><td>full mix</td><td class="n">8,868</td><td class="n">278</td><td class="n">≈ 4.8 h</td></tr>
+      <tr><td><b>FT-A</b></td><td>same mix <b>without</b> the verified generators</td><td class="n">6,588</td><td class="n">206</td><td class="n">≈ 3.7 h</td></tr>
+    </tbody>
+  </table>
+
+  <h3>How training works, simply</h3>
+  <ol class="steps">
+    <li>Take 32 examples (one "step"). Because of memory limits, the laptop processes them one at a time and adds up their effect ("gradient accumulation").</li>
+    <li>For each example, the model predicts the ideal answer word by word. The <b>loss</b> measures how wrong those predictions are. We only count loss on the <i>answer</i>, not on the question.</li>
+    <li>Adjust the LoRA adapter slightly to reduce the loss. Repeat for all steps.</li>
+    <li>Every 35–70 steps, check the loss on validation examples the model is not trained on, and save a checkpoint.</li>
+  </ol>
+
+  <h3>Engineering problems we solved</h3>
+  <table>
+    <thead><tr><th>Problem</th><th>Solution</th></tr></thead>
+    <tbody>
+      <tr><td>4-bit QLoRA does not work reliably on Intel GPUs</td><td>Used standard LoRA in bf16; the adapter is the same size</td></tr>
+      <tr><td>Out of memory at batch size 4 (the model's 152,000-word vocabulary makes outputs huge)</td><td>Batch size 1 with 32 accumulation steps: same effective batch</td></tr>
+      <tr><td>Laptop slept / battery died during training</td><td>Automatic checkpoints, resume from the last checkpoint, a keep-awake helper</td></tr>
+      <tr><td>Slow generation during testing</td><td>Batched generation (64 questions at once): 2.8 → 144 tokens per second</td></tr>
+    </tbody>
+  </table>
+
+  <figure>
+    <img src="../figures/loss.png" alt="Training and validation loss curves for FT-B, FT-A and FT-C">
+    <figcaption>Loss curves. The orange validation loss goes steadily down in every run, which means the model kept learning and did not overfit. The wavy blue line is normal: batches alternate between short answers (low loss) and long explanations (high loss).</figcaption>
+  </figure>
+</section>
+
+<!-- ============ STEP 4 ============ -->
+<section>
+  <div class="kicker">Chapter 6</div>
+  <h2>Step 4: Results, explained</h2>
+  <table>
+    <thead><tr><th>Test (unseen questions)</th><th class="n">Base</th><th class="n">FT-A (no verified data)</th><th class="n">FT-B (full)</th><th>Significant?</th></tr></thead>
+    <tbody>
+      <tr><td>Spider: write SQL</td><td class="n">50.5%</td><td class="n">54.5%</td><td class="n up">60.0%</td><td>Yes (p = 0.011)</td></tr>
+      <tr><td>DBMS functional-dependency problems</td><td class="n">15%</td><td class="n">17%</td><td class="n up">30%</td><td>Yes (p = 0.017)</td></tr>
+      <tr><td>CN numericals</td><td class="n">1%</td><td class="n">0%</td><td class="n up">8%</td><td>Yes (p = 0.039)</td></tr>
+      <tr><td>CS-Bench concepts</td><td class="n">51.2%</td><td class="n">53.8%</td><td class="n">55.2%</td><td>No</td></tr>
+      <tr><td>OS numericals</td><td class="n">4%</td><td class="n">3%</td><td class="n">5%</td><td>No</td></tr>
+      <tr><td>MBPP: Python coding</td><td class="n">41.5%</td><td class="n">41.0%</td><td class="n">42.5%</td><td>No (kept, not lost)</td></tr>
+      <tr><td>GATE CS 2021–26</td><td class="n">33.9%</td><td class="n">37.5%</td><td class="n">33.9%</td><td>No (only 56 questions)</td></tr>
+    </tbody>
+  </table>
+
+  <figure>
+    <img src="../figures/accuracy.png" alt="Bar chart of accuracy per task for all models with confidence intervals">
+    <figcaption>Every model on every test. The thin black lines are 95% confidence intervals: when two bars' lines overlap a lot, the difference may be luck.</figcaption>
+  </figure>
+
+  <h3>How to read these results</h3>
+  <ul>
+    <li><b>Biggest win: database tasks.</b> FD-closure and key problems went from 3% to 33% within that family. SQL writing improved by 9.5 points.</li>
+    <li><b>The ablation proves the cause.</b> FT-A (same training, minus verified problems) stays at base level on numericals. So the verified data is what teaches these procedures.</li>
+    <li><b>No catastrophic forgetting.</b> Coding (MBPP) and GATE did not get worse.</li>
+    <li><b>CS-Bench improved a little</b> (+4), but half of that came from the model writing its answer in the right format more often. We reported this honestly.</li>
+  </ul>
+  <div class="box honest"><div class="t">Limitation to mention</div>
+  <p>FT-B trained for 35% more steps than FT-A, so part of the difference could come from extra training. A perfectly matched comparison is listed as future work.</p></div>
+</section>
+
+<!-- ============ STEP 5 ============ -->
+<section>
+  <div class="kicker">Chapter 7 · Week 4</div>
+  <h2>Step 5: Error analysis: why the model still fails</h2>
+  <p>Scores tell you <i>how much</i>; error analysis tells you <i>why</i>. We took 50 random wrong answers from FT-B, read each one and gave it a category.</p>
+  <table>
+    <thead><tr><th>Error type</th><th class="n">Share</th><th>Example</th></tr></thead>
+    <tbody>
+      <tr><td><b>Procedure / step tracking</b></td><td class="n">52%</td><td>Stops computing an attribute closure after one step; orders FCFS by process number instead of arrival time</td></tr>
+      <tr><td>Knowledge gap</td><td class="n">16%</td><td>Confuses deadlock avoidance with deadlock prevention</td></tr>
+      <tr><td>Schema hallucination (SQL)</td><td class="n">12%</td><td>Uses a column from the wrong table</td></tr>
+      <tr><td>Arithmetic / units</td><td class="n">8%</td><td>Writes 0.96 ms as 9.6 ms</td></tr>
+      <tr><td>Misread the task</td><td class="n">6%</td><td>Returns a number when the tests expect True/False</td></tr>
+      <tr><td>Answer contradicts own reasoning</td><td class="n">4%</td><td>Explains why A is right, then answers B</td></tr>
+      <tr><td>Unclear question</td><td class="n">2%</td><td>Badly translated benchmark question</td></tr>
+    </tbody>
+  </table>
+  <div class="box simple"><div class="t">The key insight</div>
+  <p>The model learned the <b>format and the method</b> perfectly: zero formatting failures in the sample. What it cannot do reliably is <b>carry out</b> a long procedure step by step without losing track. It imitates the shape of a solution without truly executing it. This is a known limit of small models, and our analysis shows exactly where it bites.</p></div>
+  <h3>What would fix each error type</h3>
+  <ul>
+    <li>Procedure errors → more training, and solutions that restate the full state after each step, with self-checks ("waiting times must be ≥ 0").</li>
+    <li>Arithmetic → let the model call Python as a calculator (tool use).</li>
+    <li>SQL hallucination → run the query, and retry if the database reports "no such column".</li>
+    <li>Knowledge gaps → more concept data for OS/CN, or textbook retrieval.</li>
+  </ul>
+</section>
+
+<!-- ============ STEP 6 ============ -->
+<section>
+  <div class="kicker">Chapter 8 · Extension</div>
+  <h2>Step 6: Adding Deep Learning (FT-C)</h2>
+  <p>Retraining everything from scratch with DL would take about 8.5 hours. Instead we used <b>continued training</b>: start from FT-B's adapter and train a short extra stage.</p>
+  <ol class="steps">
+    <li><b>10 new verified DL generators:</b> convolution output size and parameters, pooling, MLP parameter count, forward pass, softmax and cross-entropy, gradient descent, backpropagation through a sigmoid neuron, momentum, attention weights, precision/recall/F1. Each one is checked against <b>PyTorch</b> in the tests.</li>
+    <li><b>DL concept Q&amp;A</b> from Gemini over 36 DL topics (CNNs, RNNs, LSTMs, Transformers, regularisation, optimisers…).</li>
+    <li><b>Replay data:</b> 1,200 examples from the original mix are mixed in, so the model does not forget DBMS, CN, SQL and coding.</li>
+    <li><b>Trained FT-C</b> on 2,107 examples: 66 steps, <b>70 minutes</b>.</li>
+    <li><b>Tested only the five most informative tasks</b> to save about 1.5 hours.</li>
+  </ol>
+  <div class="example">Example DL problem: A conv layer receives 30 × 30 × 48. It has 10 filters of 11 × 11,
+stride 2, padding 5. Output size = ⌊(30 + 2·5 − 11) / 2⌋ + 1 = 15 → 15 × 15 × 10.
+Parameters = (11·11·48 + 1) × 10 = 58,090.</div>
+
+  <table>
+    <thead><tr><th>Test</th><th class="n">Base</th><th class="n">FT-B</th><th class="n">FT-C</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td>DL numericals: share of correct numbers</td><td class="n">12.6%</td><td class="n">15.8%</td><td class="n up">26.0%</td><td>Significant (p = 0.013)</td></tr>
+      <tr><td>DL numericals: fully correct</td><td class="n">2%</td><td class="n">3%</td><td class="n">5%</td><td>Small; arithmetic slips</td></tr>
+      <tr><td>DBMS FD problems</td><td class="n">15%</td><td class="n">30%</td><td class="n">31%</td><td>Kept</td></tr>
+      <tr><td>CN numericals</td><td class="n">1%</td><td class="n">8%</td><td class="n">7%</td><td>Kept</td></tr>
+      <tr><td>Spider SQL</td><td class="n">50.5%</td><td class="n">60.0%</td><td class="n">59.5%</td><td>Kept</td></tr>
+      <tr><td>MBPP coding</td><td class="n">41.5%</td><td class="n">42.5%</td><td class="n">40.0%</td><td>Kept (difference is luck)</td></tr>
+    </tbody>
+  </table>
+  <div class="box simple"><div class="t">Why two DL scores?</div>
+  <p>A DL answer often has several numbers (output height, width, depth, parameters). "Fully correct" needs <i>all</i> of them right, so one slip gives zero. "Share of correct numbers" gives partial credit, like an examiner giving step marks. It shows FT-C learned the formulas (convolution 22→47%, softmax 0→56%, metrics 22→44%) even when one multiplication goes wrong.</p></div>
+  <div class="box honest"><div class="t">Honest note</div>
+  <p>Gradient-descent and momentum problems got worse, and attention and backpropagation stayed at 0%. These need long chains of decimal arithmetic, which is exactly the weakness found in the error analysis.</p></div>
+</section>
+
+<!-- ============ STEP 7 ============ -->
+<section>
+  <div class="kicker">Chapter 9</div>
+  <h2>Step 7: The chat app, practice demo and paper</h2>
+  <div class="two">
+    <div>
+      <h3>Chat app (like ChatGPT/Claude)</h3>
+      <ul>
+        <li>Sidebar with past conversations, saved in your browser.</li>
+        <li>Model switch: <b>FT-C, FT-B, FT-A or the base model</b>, to show the difference live.</li>
+        <li>Answers appear word by word (streaming), with formatted math, tables and highlighted code, plus copy and stop buttons.</li>
+        <li>Runs fully on the laptop. Each answer takes about 20–45 seconds.</li>
+      </ul>
+      <p><b>How it works:</b> a Python server (FastAPI) loads the base model once and attaches all three LoRA adapters by name. Switching models just switches the adapter, with no reloading.</p>
+    </div>
+    <div>
+      <h3>Verified practice demo</h3>
+      <ul>
+        <li>Choose OS, CN, DBMS or Deep Learning.</li>
+        <li>The app generates a brand-new problem with a computed answer.</li>
+        <li>The model solves it, and the app shows ✅ or ❌ with the correct answer.</li>
+      </ul>
+      <h3>Research paper</h3>
+      <p>A 4-page IEEE-style paper (<code>paper/CSE-Tutor_paper.pdf</code>) with abstract, method, results tables, figures, error analysis, limitations and 15 references.</p>
+    </div>
+  </div>
+
+  <h3>How to run everything</h3>
+  <table>
+    <thead><tr><th>Goal</th><th>Command (inside the project folder)</th></tr></thead>
+    <tbody>
+      <tr><td>Chat with the model</td><td><code>python demo/server.py</code>, then open http://127.0.0.1:8000</td></tr>
+      <tr><td>Practice problems demo</td><td><code>python demo/app.py</code>, then open http://127.0.0.1:7860</td></tr>
+      <tr><td>Run all 44 tests</td><td><code>python -m unittest discover -s tests -t .</code></td></tr>
+      <tr><td>Rebuild results tables</td><td><code>python eval/summarize.py</code></td></tr>
+      <tr><td>Rebuild figures</td><td><code>python eval/plots.py</code></td></tr>
+      <tr><td>Rebuild the paper PDF</td><td><code>paper\build_pdf.cmd</code></td></tr>
+    </tbody>
+  </table>
+  <div class="box honest"><div class="t">Before your review</div>
+  <p>The trained adapters are in <code>outputs/</code> on the laptop and are <b>not on GitHub</b>. Keep a backup. Start the chat app 2 minutes before the demo, because loading the model takes time. A good live question: <i>"For R(A, B, C, D) with FDs A → B, B → C, C → D, find the closure of A and all candidate keys."</i></p></div>
+
+  <h3>Project timeline</h3>
+  <table>
+    <thead><tr><th>Phase</th><th>Main outputs</th></tr></thead>
+    <tbody>
+      <tr><td>Week 1</td><td>Plan, OS generators + tests, evaluation harness, baselines B0/B1</td></tr>
+      <tr><td>Week 2</td><td>CN + DBMS generators, GATE/ISRO, Gemini Q&amp;A, textbooks, Spider/MBPP, cleaned dataset</td></tr>
+      <tr><td>Week 3</td><td>Trained FT-B and FT-A, evaluated on 7 tests with statistics</td></tr>
+      <tr><td>Week 4</td><td>Error analysis, figures, Gradio demo, final report</td></tr>
+      <tr><td>Extension</td><td>DL generators, FT-C, chat app, research paper</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============ VIVA ============ -->
+<section>
+  <div class="kicker">Chapter 10</div>
+  <h2>Likely review questions, with simple answers</h2>
+  <dl class="qa">
+    <dt>1. Why a small model instead of GPT-4?</dt>
+    <dd>It runs offline on a student's laptop at no cost and keeps data private. The project asks how far a small model can be pushed with good data.</dd>
+    <dt>2. What exactly is your novelty?</dt>
+    <dd>Training answers for numerical topics are computed by code, so they are guaranteed correct, and an ablation (FT-A vs FT-B) proves that this verified data causes the numerical gains. Plus fair testing with statistics, all on a laptop.</dd>
+    <dt>3. Why LoRA and not full fine-tuning?</dt>
+    <dd>Full fine-tuning updates 1.5 billion numbers and does not fit in laptop memory. LoRA trains 18.5 million (1.18%), and the result can be switched on and off as a small adapter file.</dd>
+    <dt>4. How do you know the model did not just memorise the test?</dt>
+    <dd>The test sets were never trained on. We removed any 13-word overlap, generator test problems use different number ranges, and GATE is split by year.</dd>
+    <dt>5. What does p &lt; 0.05 mean?</dt>
+    <dd>If the two models were really equally good, a difference this large would happen by chance less than 5% of the time. So we trust the difference.</dd>
+    <dt>6. Why did CS-Bench barely improve?</dt>
+    <dd>It tests broad knowledge, and our data focused on procedures. About half of its +4 points came from the model writing answers in the correct format. 3-shot prompting is still slightly better there.</dd>
+    <dt>7. Why is OS scheduling still at 0%?</dt>
+    <dd>Long simulations need perfect step tracking. The model copies the Gantt-chart layout but fills in wrong times. The error analysis documents this, and tool use would fix it.</dd>
+    <dt>8. How did you add Deep Learning without forgetting?</dt>
+    <dd>Continued training from FT-B with 1,200 "replay" examples from the old data mixed in. DBMS, CN, SQL and coding scores stayed the same.</dd>
+    <dt>9. Why two different DL metrics?</dt>
+    <dd>Exact match needs every number right, which is too harsh to show learning. Value-level credit is like step marks and shows the formulas were learned (26% vs 15.8%, significant).</dd>
+    <dt>10. What would you do with more time?</dt>
+    <dd>Train more epochs; give the model a calculator (tool use); write solutions that re-check each step; preference training (DPO) using correct/incorrect pairs from the generators; a step-matched ablation; and run MMLU for general knowledge.</dd>
+    <dt>11. Where did Gemini help, and how did you stop its mistakes?</dt>
+    <dd>Concept Q&amp;A, GATE explanations and textbook Q&amp;A. We only kept answers that matched official keys or could be answered from the textbook passage, and we never used Gemini for the numerical answers.</dd>
+    <dt>12. What were the hardest engineering issues?</dt>
+    <dd>Intel GPU limits (no 4-bit, memory), slow generation (fixed with batching), and the laptop sleeping during multi-hour training (fixed with checkpoints and resume).</dd>
+  </dl>
+</section>
+
+<!-- ============ GLOSSARY ============ -->
+<section>
+  <div class="kicker">Chapter 11</div>
+  <h2>Glossary</h2>
+  <table>
+    <tbody>
+      <tr><td><b>Ablation</b></td><td>An experiment that removes one ingredient to see its effect (FT-A = FT-B minus verified data).</td></tr>
+      <tr><td><b>Adapter</b></td><td>The small set of LoRA weights added to the frozen model; it can be switched on or off.</td></tr>
+      <tr><td><b>Baseline</b></td><td>The model before any training, used for comparison (B0, B1).</td></tr>
+      <tr><td><b>Checkpoint</b></td><td>A saved copy of training progress, so training can resume after an interruption.</td></tr>
+      <tr><td><b>Confidence interval</b></td><td>The range in which the true score very likely lies.</td></tr>
+      <tr><td><b>Contamination</b></td><td>Test questions leaking into training data, which makes scores unfairly high. We removed it.</td></tr>
+      <tr><td><b>Epoch</b></td><td>One full pass over the training data.</td></tr>
+      <tr><td><b>Fine-tuning</b></td><td>Further training of a pre-trained model on a specific task.</td></tr>
+      <tr><td><b>Few-shot / zero-shot</b></td><td>Asking with or without worked examples in the prompt.</td></tr>
+      <tr><td><b>Generator</b></td><td>Our Python program that creates a random problem and computes its correct answer.</td></tr>
+      <tr><td><b>Hallucination</b></td><td>The model stating something false or invented, e.g. a SQL column that does not exist.</td></tr>
+      <tr><td><b>Learning rate</b></td><td>How big each adjustment is during training.</td></tr>
+      <tr><td><b>LoRA</b></td><td>Low-Rank Adaptation: trains small extra matrices instead of the whole model.</td></tr>
+      <tr><td><b>Loss</b></td><td>A number measuring how wrong the model's predictions are; training lowers it.</td></tr>
+      <tr><td><b>McNemar test</b></td><td>A significance test comparing two models on the same questions.</td></tr>
+      <tr><td><b>Parameter</b></td><td>One learned number inside the model.</td></tr>
+      <tr><td><b>Replay data</b></td><td>Old training examples mixed into new training to prevent forgetting.</td></tr>
+      <tr><td><b>SFT</b></td><td>Supervised fine-tuning: learning from (question, ideal answer) pairs.</td></tr>
+      <tr><td><b>Token</b></td><td>A piece of a word; models read and write tokens.</td></tr>
+      <tr><td><b>Validation set</b></td><td>Examples kept aside during training to check that the model generalises.</td></tr>
+    </tbody>
+  </table>
+  <p style="margin-top:14pt; color: var(--ink-2); font-size: 9pt">Full details: <code>docs/FINAL_REPORT.md</code> · <code>paper/CSE-Tutor_paper.pdf</code> · weekly reports in <code>docs/</code> · results in <code>eval/results/RESULTS.md</code>.</p>
+</section>
+</body>
+</html>
