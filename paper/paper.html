@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CSE-Tutor: Verified Synthetic Data for Fine-Tuning a 1.5B Tutor Model</title>
+<style>
+/* IEEE-style two-column paper, printed to A4 PDF with headless Edge (see paper/build_pdf.cmd). */
+@page { size: A4; margin: 18mm 15mm 18mm 15mm; }
+:root { --ink: #000; --muted: #333; --rule: #000; }
+* { box-sizing: border-box; }
+body { margin: 0; color: var(--ink); background: #fff; font: 9.6pt/1.32 "Times New Roman", Times, serif; text-align: justify;
+  hyphens: auto; }
+.top { text-align: center; margin-bottom: 10pt; }
+h1.title { font-size: 21pt; font-weight: normal; line-height: 1.15; margin: 0 0 8pt; text-align: center; }
+.authors { font-size: 10.5pt; margin-bottom: 2pt; }
+.affil { font-size: 9pt; font-style: italic; color: var(--muted); }
+.cols { column-count: 2; column-gap: 7mm; }
+.abstract, .keywords { font-size: 8.8pt; font-weight: bold; margin: 0 0 6pt; }
+.abstract i, .keywords i { font-weight: bold; }
+.abstract span, .keywords span { font-weight: bold; }
+h2 { font-size: 9.6pt; font-variant: small-caps; font-weight: normal; text-align: center; margin: 10pt 0 4pt; letter-spacing: 0.02em;
+  break-after: avoid; }
+h3 { font-size: 9.6pt; font-style: italic; font-weight: normal; margin: 7pt 0 3pt; break-after: avoid; }
+p { margin: 0 0 5pt; text-indent: 1.2em; }
+p.noindent, h2 + p, h3 + p { text-indent: 0; }
+ul, ol { margin: 0 0 5pt; padding-left: 1.3em; }
+li { margin-bottom: 1.5pt; }
+table { border-collapse: collapse; width: 100%; font-size: 7.8pt; margin: 2pt 0 2pt; font-variant-numeric: tabular-nums; }
+th, td { padding: 1.6pt 3pt; text-align: center; }
+th:first-child, td:first-child { text-align: left; }
+.ltab td:nth-child(2), .ltab th:nth-child(2), .ltab td:nth-child(3), .ltab th:nth-child(3) { text-align: left; }
+td { white-space: normal; } td.nw, th.nw { white-space: nowrap; }
+thead th { border-top: 1.2pt solid var(--rule); border-bottom: 0.6pt solid var(--rule); font-weight: bold; }
+tbody tr:last-child td { border-bottom: 1.2pt solid var(--rule); }
+figure, .tbl { margin: 6pt 0 8pt; break-inside: avoid; }
+figure img { width: 100%; display: block; }
+figcaption, .cap { font-size: 7.8pt; text-align: center; margin: 3pt 0; }
+.cap { text-transform: uppercase; letter-spacing: 0.03em; }
+.cap b { font-weight: normal; }
+.wide { column-span: all; }
+code { font: 8.2pt "Courier New", monospace; }
+.refs { font-size: 7.8pt; padding-left: 1.6em; }
+.refs li { margin-bottom: 2pt; text-indent: 0; }
+b.sig { font-weight: bold; }
+.eq { text-align: center; margin: 3pt 0 5pt; text-indent: 0; font-style: italic; }
+</style>
+</head>
+<body>
+<div class="top">
+  <h1 class="title">CSE-Tutor: Verified Synthetic Data for Fine-Tuning a 1.5B-Parameter Tutor Model for Computer Science Education</h1>
+  <div class="authors">Satya Dedeepya</div>
+  <div class="affil">Course project, Deep Learning &middot; github.com/satyadedeepya/slm_dl_project</div>
+</div>
+<div class="cols">
+
+<p class="abstract"><i>Abstract</i>&mdash;Small language models can run on a student's laptop, but they are unreliable on the numerical problems that dominate computer-science examinations. We fine-tune Qwen2.5-1.5B-Instruct with LoRA as a tutor for six subjects (data structures and algorithms, programming, databases, operating systems, computer networks and deep learning) using a mixed instruction set whose distinctive component is <i>programmatically verified</i> data: 3,000 problems whose step-by-step solutions and answers are computed by executing the underlying algorithm. All training and evaluation runs on an integrated Intel Arc GPU. On held-out test sets, fine-tuning significantly improves text-to-SQL execution accuracy (50.5&rarr;60.0), functional-dependency problems (15&rarr;30) and network numericals (1&rarr;8) over the base model (exact McNemar <i>p</i>&nbsp;&lt;&nbsp;0.05), without loss on code generation. An ablation that removes only the verified data eliminates these numerical gains. A continued-training stage adds deep learning, DL_ABSTRACT. Error analysis shows that the remaining failures are mostly procedural: the model reproduces the solution template but executes multi-step algorithms unreliably.</p>
+<p class="keywords"><i>Index Terms</i>&mdash;small language models, LoRA, synthetic data, data verification, computer science education, text-to-SQL.</p>
+
+<h2>I. Introduction</h2>
+<p class="noindent">Students preparing for university examinations, GATE and placement interviews need an assistant that explains concepts, solves numerical problems step by step and writes correct code and SQL. Large hosted models do this well but cost money and need connectivity; a 1.5B-parameter model runs locally, but out of the box it computes CPU-scheduling waiting times, page faults and subnet ranges incorrectly because it pattern-matches instead of executing the procedure.</p>
+<p>The common recipe for adapting a small model is to fine-tune on question&ndash;answer pairs written by a larger model [11], [12]. Such labels are unverified, and a small student model can learn the teacher's mistakes. We take a different route for the part of the curriculum that is algorithmic: we write generators that sample random problem instances and <i>compute</i> their solutions by running the algorithm, so every label is correct by construction. We then ask three questions:</p>
+<ul>
+<li><b>RQ1:</b> how much does LoRA fine-tuning improve a 1.5B model on CS tasks compared with zero- and few-shot prompting?</li>
+<li><b>RQ2:</b> does the verified numerical data cause the improvement on numerical problems, or does the rest of the mix?</li>
+<li><b>RQ3:</b> can a new subject (deep learning) be added cheaply by continued training without forgetting earlier skills?</li>
+</ul>
+<p>Our contributions are (1) verified generators for 41 problem types across operating systems, networks, databases and deep learning, with tests against textbook examples and PyTorch; (2) a controlled ablation isolating the effect of verified data; (3) a statistically careful evaluation (bootstrap confidence intervals, exact McNemar tests, separated format failures) on seven held-out benchmarks; (4) an error taxonomy of the fine-tuned model; and (5) a local chat interface. The whole pipeline runs on a laptop with an integrated GPU.</p>
+
+<h2>II. Related Work</h2>
+<p class="noindent"><i>Parameter-efficient fine-tuning.</i> LoRA [1] trains low-rank updates of frozen weights; QLoRA [2] adds 4-bit quantisation of the base model. We use LoRA on all attention and MLP projections of Qwen2.5-1.5B-Instruct [3], [4].</p>
+<p><i>Models for CS education.</i> GuideLM [6] shows that small supervised sets can shape pedagogical behaviour; QLoRA has been applied to DSA problems [7]; local open-source teaching assistants are studied in [8]&ndash;[10]. CS-Bench [5] is the closest benchmark and serves as our multiple-choice evaluation.</p>
+<p><i>Synthetic instruction data.</i> Self-Instruct [11] and GLAN [12] generate instruction data with language models. Our generators are programs, so correctness does not depend on a teacher model; LLM-written data in our mix is filtered by answer-key agreement instead.</p>
+<p><i>Forgetting.</i> Parameter-efficient tuning still forgets [13]; we therefore keep replay data and measure code generation and examination questions after every stage.</p>
+
+<h2>III. Data</h2>
+<h3>A. Verified generators</h3>
+<p class="noindent">Each generator samples parameters, runs the algorithm and writes a solution in a fixed teaching format that ends with a <code>Final answer:</code> line, plus a machine-readable grading specification (Table&nbsp;I). Questions state their conventions (tie-breaking, whether C-SCAN counts the return seek) so the reference answer is unambiguous. Test problems are drawn from parameter pools disjoint from training. Correctness is checked by unit tests against textbook worked examples (e.g. Silberschatz scheduling and page-replacement figures), property tests (Belady's optimality, safety-sequence validity), and, for deep learning, by recomputing answers with PyTorch layers and autograd.</p>
+<div class="tbl">
+<div class="cap">Table I<br><b>Verified generator families</b></div>
+<table class="ltab">
+<thead><tr><th>Subject</th><th>Families</th><th class="nw">Train / test</th></tr></thead>
+<tbody>
+<tr><td>OS</td><td>scheduling (6 algorithms), page replacement, Banker's, disk scheduling</td><td class="nw">900 / 100</td></tr>
+<tr><td>CN</td><td>subnetting, CRC, checksum, delays, sliding window</td><td class="nw">900 / 100</td></tr>
+<tr><td>DBMS</td><td>closure, candidate keys, normal form, lossless join</td><td class="nw">600 / 100</td></tr>
+<tr><td>DL</td><td>conv/pool shapes, MLP parameters, forward pass, softmax-CE, GD, backprop, momentum, attention, P/R/F1</td><td class="nw">600 / 100</td></tr>
+</tbody></table>
+</div>
+<h3>B. The full training mix</h3>
+<p class="noindent">The first-stage mix (9,335 examples, 2.68M tokens; Table&nbsp;II) combines the generators with GATE/ISRO previous-year questions whose explanations were produced by a teacher model <i>without the key</i> and kept only when the teacher agreed with the official answer (990 of 1,154), concept Q&amp;A over a 133-topic syllabus, Q&amp;A grounded in four openly licensed textbooks, Spider [14] text-to-SQL with real schemas, MBPP [15] and CodeAlpaca for code, and general replay data. All sources are deduplicated with MinHash and decontaminated against every evaluation set with 13-gram overlap. GATE papers up to 2020 and half of 2021&ndash;2026 are used for training; the other half of 2021&ndash;2026 is held out.</p>
+<div class="tbl">
+<div class="cap">Table II<br><b>First-stage training mix (train + validation)</b></div>
+<table class="ltab">
+<thead><tr><th>Source</th><th>Examples</th><th>Quality gate</th></tr></thead>
+<tbody>
+<tr><td>Verified generators (OS, CN, DBMS)</td><td>2,400</td><td>computed answers</td></tr>
+<tr><td>GATE / ISRO PYQs</td><td>978</td><td>teacher agrees with key</td></tr>
+<tr><td>Concept Q&amp;A (teacher)</td><td>1,458</td><td>MCQ/TF key agreement</td></tr>
+<tr><td>Open-textbook Q&amp;A</td><td>1,170</td><td>answerable from passage</td></tr>
+<tr><td>Spider</td><td>1,335</td><td>gold SQL executes</td></tr>
+<tr><td>MBPP / CodeAlpaca</td><td>311 / 1,184</td><td>tests pass / code parses</td></tr>
+<tr><td>Replay (Alpaca)</td><td>499</td><td>length filter</td></tr>
+</tbody></table>
+</div>
+
+<h2>IV. Method</h2>
+<p class="noindent"><i>Models.</i> B0 and B1 are the base model prompted zero-shot and 3-shot. FT-B is LoRA on the full first-stage mix; FT-A is identical but without the generator slice (6,588 examples). FT-C continues training FT-B's adapter on a deep-learning stage: DL_STAGE_MIX.</p>
+<p><i>Training.</i> LoRA rank 16, &alpha;&nbsp;=&nbsp;32, dropout 0.05 on q, k, v, o, gate, up and down projections (18.5M trainable parameters, 1.18%); loss on assistant tokens only; AdamW, learning rate 2&times;10<sup>&minus;4</sup> (10<sup>&minus;4</sup> for FT-C) with cosine decay and 3% warm-up; effective batch 32 (batch 1 &times; 32 accumulation); one epoch; bf16; length-grouped batches.</p>
+<p><i>Hardware.</i> An Intel Core Ultra 5 125H with integrated Arc graphics (8.4&nbsp;GB shared memory). bitsandbytes 4-bit quantisation is not dependable on Intel XPU, so the base model is held in bf16 (the adapter is the same as in QLoRA). Batch 4 ran out of memory because the 152K-token vocabulary makes the logits alone about 2.5&nbsp;GB, hence gradient accumulation. One optimiser step takes about 62&nbsp;s; FT-B trained in 4.8&nbsp;h and FT-A in 3.7&nbsp;h.</p>
+<p><i>Evaluation.</i> Adapters are merged and decoded greedily with the prompts used for the baselines: CS-Bench [5] (400 DSA/OS/CN multiple-choice and true/false items, accuracy), verified OS/CN/DBMS/DL test problems (100 each, exact match by a typed grader), MBPP (200, pass@1 with test execution), Spider dev (200, execution accuracy) and the held-out GATE CS questions (56). We report 95% bootstrap confidence intervals and exact two-sided McNemar tests on paired items, and count unparseable answers separately so that learning the answer format is not mistaken for knowledge.</p>
+
+<h2>V. Results</h2>
+<div class="tbl wide">
+<div class="cap">Table III<br><b>Accuracy (%) on held-out tasks. p: exact McNemar test against B0 (FT-B, FT-A) or against FT-A (FT-B vs FT-A)</b></div>
+<table>
+<thead><tr><th>Task</th><th>n</th><th>B0 0-shot</th><th>B1 3-shot</th><th>FT-A</th><th>FT-B</th><th>FT-C</th><th>p FT-B vs B0</th><th>p FT-B vs FT-A</th></tr></thead>
+<tbody>
+<tr><td>CS-Bench (DSA/OS/CN)</td><td>400</td><td>51.2</td><td><b>58.0</b></td><td>53.8</td><td>55.2</td><td>DL_CSB</td><td>0.18</td><td>0.57</td></tr>
+<tr><td>OS numericals</td><td>100</td><td>4.0</td><td>4.0</td><td>3.0</td><td>5.0</td><td>DL_OS</td><td>1.00</td><td>0.73</td></tr>
+<tr><td>CN numericals</td><td>100</td><td>1.0</td><td>2.0</td><td>0.0</td><td><b>8.0</b></td><td>DL_CN</td><td><b>0.039</b></td><td><b>0.008</b></td></tr>
+<tr><td>DBMS FD problems</td><td>100</td><td>15.0</td><td>12.0</td><td>17.0</td><td><b>30.0</b></td><td>DL_DBMS</td><td><b>0.017</b></td><td>0.060</td></tr>
+<tr><td>DL numericals</td><td>100</td><td>DL_B0</td><td>&ndash;</td><td>&ndash;</td><td>DL_FTB</td><td>DL_FTC</td><td colspan="2">DL_P</td></tr>
+<tr><td>MBPP pass@1</td><td>200</td><td>41.5</td><td>41.5</td><td>41.0</td><td>42.5</td><td>DL_MBPP</td><td>0.89</td><td>0.66</td></tr>
+<tr><td>Spider (execution)</td><td>200</td><td>50.5</td><td>&ndash;</td><td>54.5</td><td><b>60.0</b></td><td>DL_SPIDER</td><td><b>0.011</b></td><td>0.052</td></tr>
+<tr><td>GATE CS 2021&ndash;26</td><td>56</td><td>33.9</td><td>&ndash;</td><td>37.5</td><td>33.9</td><td>DL_GATE</td><td>1.00</td><td>0.82</td></tr>
+</tbody></table>
+</div>
+<figure>
+<img src="../docs/figures/accuracy.png" alt="Grouped bar chart of accuracy per task for B0, B1, FT-A and FT-B with 95% confidence intervals">
+<figcaption>Fig. 1. Accuracy per task with 95% bootstrap confidence intervals (first stage).</figcaption>
+</figure>
+<h3>A. RQ1: fine-tuning versus prompting</h3>
+<p class="noindent">FT-B significantly improves over the zero-shot base model on Spider (+9.5 points, <i>p</i>&nbsp;=&nbsp;0.011), DBMS functional-dependency problems (+15.0, <i>p</i>&nbsp;=&nbsp;0.017) and network numericals (+7.0, <i>p</i>&nbsp;=&nbsp;0.039). On CS-Bench the gain (+4.0) is not significant, and about half of it comes from fewer unparseable answers (21&rarr;7 of 400); three-shot prompting remains slightly better on this knowledge-oriented benchmark. MBPP and GATE do not change significantly, so first-stage fine-tuning does not degrade code generation or examination performance. The only negative signal is CS-Bench's <i>reasoning</i> subset, which fell by 6&ndash;7 points in both fine-tuned runs (not significant at <i>n</i>&nbsp;=&nbsp;142).</p>
+<h3>B. RQ2: what the verified data contributes</h3>
+<p class="noindent">FT-A, trained on the same mix and settings minus the generator slice, stays at base-model level on every numerical task (CN 0%; closure and candidate keys 0% versus 32.8% for FT-B). The numerical gains are therefore caused by the verified data rather than by teacher Q&amp;A, textbooks or examination questions. On CS-Bench, MBPP and GATE the two runs are within noise: the generated data is specific in its effect. FT-B also trains for 35% more steps than FT-A, so part of any FT-B&ndash;FT-A difference could come from training length; a step-matched control is left to future work. CPU and disk scheduling stay at 0% for every model: FT-B reproduces Gantt charts and tables perfectly but fills them with wrong values.</p>
+<h3>C. RQ3: adding deep learning by continued training</h3>
+<p class="noindent">DL_RQ3</p>
+<figure>
+<img src="../docs/figures/loss.png" alt="Training and validation loss curves for FT-B and FT-A">
+<figcaption>Fig. 2. Training loss (rolling mean) and validation loss. The two runs use different validation samples and are not directly comparable.</figcaption>
+</figure>
+
+<h2>VI. Error Analysis</h2>
+<p class="noindent">We hand-labelled a stratified random sample of 50 wrong FT-B answers (12 CS-Bench, 8 each OS/CN/DBMS, 7 MBPP, 7 Spider) with one primary cause each (Table&nbsp;IV). None was a format failure.</p>
+<div class="tbl">
+<div class="cap">Table IV<br><b>Error categories of FT-B (n = 50)</b></div>
+<table>
+<thead><tr><th>Category</th><th>Share</th><th>Typical case</th></tr></thead>
+<tbody>
+<tr><td>Procedure / state tracking</td><td>52%</td><td>closure stops after one FD</td></tr>
+<tr><td>Knowledge gap</td><td>16%</td><td>avoidance vs prevention</td></tr>
+<tr><td>Schema hallucination</td><td>12%</td><td>column from wrong table</td></tr>
+<tr><td>Arithmetic / units</td><td>8%</td><td>0.96&nbsp;ms written as 9.6&nbsp;ms</td></tr>
+<tr><td>Misread task</td><td>6%</td><td>number returned, bool expected</td></tr>
+<tr><td>Answer contradicts reasoning</td><td>4%</td><td>argues A, answers B</td></tr>
+<tr><td>Ambiguous item</td><td>2%</td><td>&ndash;</td></tr>
+</tbody></table>
+</div>
+<p>Procedure errors account for 20 of the 24 numerical failures and fall into three patterns: <i>early stopping in fixed-point loops</i> (attribute closure applies one dependency and declares that nothing else applies), <i>unfaithful reading of the input</i> (claiming an attribute never appears on a right-hand side when it does; ordering FCFS by process number instead of arrival) and <i>inconsistent state</i> (LRU tables wider than the frame count; negative waiting times that are never checked). Arithmetic slips are a minority and are mostly powers of ten. Spider failures are grounding errors against a schema that is in the prompt. These patterns suggest concrete remedies: traces that restate the complete state at each step with built-in self-checks, tool use for arithmetic, and execution feedback for SQL.</p>
+
+<h2>VII. System</h2>
+<p class="noindent">The tutor is served by a small FastAPI application that loads the base model once and attaches the FT-A, FT-B and FT-C adapters as named LoRA adapters, so the chat interface can switch between them, or disable them to show the base model, without reloading weights. Answers stream token by token with server-sent events; the browser interface renders Markdown, tables and highlighted code and keeps conversations locally. A second Gradio interface generates a fresh verified problem, lets the model solve it and grades the answer automatically. On the integrated GPU a typical answer streams in 20&ndash;30&nbsp;s.</p>
+
+<h2>VIII. Limitations</h2>
+<ul>
+<li>One epoch per run and one seed per configuration; validation loss was still falling slowly.</li>
+<li>FT-B trains for more steps than FT-A, which partly confounds the ablation.</li>
+<li>The GATE test has only 56 items (&plusmn;12-point intervals); MMLU was not evaluated.</li>
+<li>Error labels come from a single annotator on a quota-stratified sample.</li>
+<li>DL_LIMIT</li>
+</ul>
+
+<h2>IX. Conclusion</h2>
+<p class="noindent">Verified, programmatically generated training data teaches a 1.5B model procedures that neither prompting nor LLM-written data teach: functional-dependency closure and keys, subnetting and CRC, and DL_CONCL. The gains are specific and do not cost code-generation ability. The main limitation is execution of long procedures, which the model imitates rather than performs. Future work: more epochs and self-checking traces, tool use for arithmetic and simulation, preference tuning on verified correct/incorrect pairs, and a step-matched ablation.</p>
+
+<h2>References</h2>
+<ol class="refs">
+<li>E. J. Hu <i>et al.</i>, &ldquo;LoRA: Low-rank adaptation of large language models,&rdquo; arXiv:2106.09685, 2021.</li>
+<li>T. Dettmers <i>et al.</i>, &ldquo;QLoRA: Efficient finetuning of quantized LLMs,&rdquo; in <i>NeurIPS</i>, 2023.</li>
+<li>Qwen Team, &ldquo;Qwen2.5 technical report,&rdquo; arXiv:2412.15115, 2024.</li>
+<li>B. Hui <i>et al.</i>, &ldquo;Qwen2.5-Coder technical report,&rdquo; arXiv:2409.12186, 2024.</li>
+<li>X. Song <i>et al.</i>, &ldquo;CS-Bench: A comprehensive benchmark for large language models towards computer science mastery,&rdquo; arXiv:2406.08587, 2024.</li>
+<li>&ldquo;Supervised fine-tuning LLMs to behave as pedagogical agents in programming education,&rdquo; arXiv:2502.20527, 2025.</li>
+<li>&ldquo;Fine-tuning of large language models for solving DSA problems using QLoRA,&rdquo; IEEE, doc. 10969969.</li>
+<li>&ldquo;AI-TA: Towards an intelligent question-answer teaching assistant using open-source LLMs,&rdquo; arXiv:2311.02775, 2023.</li>
+<li>&ldquo;Small models, big support: A local LLM framework for educator-centric content creation and assessment,&rdquo; arXiv:2506.05925, 2025.</li>
+<li>&ldquo;A large-scale real-world evaluation of LLM-based virtual teaching assistant,&rdquo; arXiv:2506.17363, 2025.</li>
+<li>Y. Wang <i>et al.</i>, &ldquo;Self-Instruct: Aligning language models with self-generated instructions,&rdquo; arXiv:2212.10560, 2022.</li>
+<li>H. Li <i>et al.</i>, &ldquo;Synthetic data (almost) from scratch: Generalized instruction tuning for language models,&rdquo; arXiv:2402.13064, 2024.</li>
+<li>&ldquo;Analyzing and reducing catastrophic forgetting in parameter efficient tuning,&rdquo; arXiv:2402.18865, 2024.</li>
+<li>T. Yu <i>et al.</i>, &ldquo;Spider: A large-scale human-labeled dataset for complex and cross-domain semantic parsing and text-to-SQL task,&rdquo; in <i>EMNLP</i>, 2018.</li>
+<li>J. Austin <i>et al.</i>, &ldquo;Program synthesis with large language models,&rdquo; arXiv:2108.07732, 2021.</li>
+</ol>
+</div>
+</body>
+</html>

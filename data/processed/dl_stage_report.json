@@ -1,0 +1,23 @@
+{
+  "train": 2107,
+  "val": 100,
+  "dl_generator": 600,
+  "dl_concepts": 307,
+  "replay": 1200,
+  "train_by_source": {
+    "spider": 180,
+    "gate": 145,
+    "generator": 897,
+    "mbpp": 51,
+    "teacher:gemini-3.8-flash": 307,
+    "replay": 68,
+    "codealpaca": 150,
+    "teacher": 164,
+    "textbook": 145
+  },
+  "concept_formats": {
+    "open": 168,
+    "mcq": 84,
+    "tf": 55
+  }
+}
