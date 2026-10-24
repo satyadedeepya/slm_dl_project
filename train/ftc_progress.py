@@ -11,8 +11,8 @@ import time
 from pathlib import Path
 
 OUT = Path(__file__).resolve().parents[1] / "outputs"
-EVAL_TASKS = 8  # gen_dl, gen_dbms, gen_cn, spider, mbpp, csbench, gen_os, gate
-STAGES = [("train", "FT-C training", 1.2), ("eval", "FT-C evaluation", 2.5)]
+EVAL_TASKS = 5  # gen_dl, gen_dbms, gen_cn, spider, mbpp (csbench, gen_os, gate skipped to save time)
+STAGES = [("train", "FT-C training", 1.2), ("eval", "FT-C evaluation", 1.4)]
 
 
 def _read(name: str) -> str:

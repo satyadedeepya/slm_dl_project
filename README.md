@@ -1,7 +1,20 @@
 # CSE-Tutor-1.5B
 
-A LoRA fine-tune of Qwen2.5-1.5B-Instruct for CSE education (DSA, Programming, DBMS, OS, CN), trained on a mix that includes 2,400 programmatically verified OS/CN/DBMS problems.
-The results and findings are in the **[final report](docs/FINAL_REPORT.md)**; the original design is in [PROJECT_PLAN.md](PROJECT_PLAN.md).
+A LoRA fine-tune of Qwen2.5-1.5B-Instruct for CSE education (DSA, Programming, DBMS, OS, CN and Deep Learning), trained on a mix that includes 3,000 programmatically verified OS/CN/DBMS/DL problems.
+
+- **Research paper:** [paper/CSE-Tutor_paper.pdf](paper/CSE-Tutor_paper.pdf) (source: `paper/paper.html`)
+- **Final report:** [docs/FINAL_REPORT.md](docs/FINAL_REPORT.md); original design: [PROJECT_PLAN.md](PROJECT_PLAN.md)
+- **Chat with the model:** `python demo/server.py`, then open http://127.0.0.1:8000
+
+## Quick start
+
+```bash
+python demo/server.py          # chat interface: conversations, model switch (FT-C / FT-B / FT-A / base), streaming, math and code
+python demo/app.py             # Gradio: verified practice problems graded automatically
+paperuild_pdf.cmd            # rebuild the paper PDF with headless Edge
+```
+
+The chat server needs the trained adapters in `outputs/<run>/adapter` (not in git; produced by `train/train_lora.py`).
 
 ## Status
 
@@ -13,6 +26,8 @@ The results and findings are in the **[final report](docs/FINAL_REPORT.md)**; th
 | 2 | CN + DBMS generators, concept Q&A, GATE/ISRO PYQs, Spider, open-textbook Q&A, dataset build | ✅ done: 9,335 examples (8,868 train / 467 val). See [Week 2 report](docs/week2_report.md) and [dataset card](data/DATASET.md) |
 | 3 | LoRA training (FT-A ablation, FT-B full mix) + evaluation | ✅ done. FT-B vs base: Spider 50.5 → 60.0, DBMS FD 15 → 30, CN numericals 1 → 8 (all p < 0.05). The FT-A ablation ties these gains to the verified generator data. See [Week 3 report](docs/week3_report.md) |
 | 4 | Error analysis, figures, demo, final report | ✅ done. 50 labelled errors (52% procedure / state tracking), Gradio demo (`demo/app.py`). See [Week 4 report](docs/week4_report.md) and the **[final report](docs/FINAL_REPORT.md)** |
+
+| + | Deep Learning stage (FT-C), chat interface, research paper | ✅ done. Verified DL generators (10 problem types, checked against PyTorch) + DL concept Q&A, continued training from FT-B. See the [DL stage report](docs/dl_stage_report.md) |
 
 ## Layout
 
@@ -42,6 +57,11 @@ train/week3_progress.py      progress meter read from outputs/*.log
 eval/plots.py                accuracy and loss figures -> docs/figures/
 eval/error_sample.py         stratified sample of wrong answers for error analysis
 eval/error_report.py         tallies the hand labels in eval/error_analysis/
+data/generators/dl_gen.py    DL generators: conv/pool shapes, parameter counts, forward pass, softmax-CE, GD, backprop, momentum, attention, metrics
+data/build_dl_stage.py       DL continued-training set (DL generators + DL concepts + replay)
+train/run_ftc.cmd            FT-C pipeline: DL stage training + evaluation
+demo/server.py               chat server (FastAPI, streaming, named LoRA adapters) + demo/static/index.html
+paper/                       research paper (HTML source, PDF, build script)
 demo/app.py                  Gradio demo: chat + verified practice problems, adapter on/off
 docs/week{1,2,3,4}_report.md weekly reports
 tests/                       textbook cases, property tests, grader tests (36)

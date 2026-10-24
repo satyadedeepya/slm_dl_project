@@ -1,6 +1,6 @@
 """CSE-Tutor demo: chat with the fine-tuned model and try it on freshly generated, verified problems.
 
-  python demo/app.py                       # FT-B adapter, http://127.0.0.1:7860
+  python demo/app.py                       # FT-C adapter (FT-B if FT-C is missing), http://127.0.0.1:7860
   python demo/app.py --adapter outputs/ft-a/adapter
   python demo/app.py --share               # temporary public Gradio link
 
@@ -22,18 +22,19 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, TextIteratorStream
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from data.generators import cn_gen, dbms_gen, os_gen  # noqa: E402
+from data.generators import cn_gen, dbms_gen, dl_gen, os_gen  # noqa: E402
 from data.generators.common import SYSTEM_PROMPT  # noqa: E402
 from data.generators.grading import grade  # noqa: E402
 
 GEN_INSTR = "Solve step by step. End with a line starting with 'Final answer:'."
-SUBJECTS = {"Operating Systems": os_gen, "Computer Networks": cn_gen, "DBMS": dbms_gen}
+SUBJECTS = {"Operating Systems": os_gen, "Computer Networks": cn_gen, "DBMS": dbms_gen, "Deep Learning": dl_gen}
 EXAMPLES = [
     "Explain the difference between deadlock prevention and deadlock avoidance, with an example.",
     "What is the time complexity of building a binary heap from n elements, and why is it not O(n log n)?",
     "Write a SQL query to find the second highest salary from an Employee(id, name, salary) table.",
     "Why does TCP use a three-way handshake instead of two?",
     "Write a Python function that checks whether a string of brackets is balanced.",
+    "Explain why residual connections help train very deep networks.",
 ]
 
 
@@ -136,7 +137,8 @@ def build(tutor: Tutor, adapter_name: str) -> gr.Blocks:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", default="Qwen/Qwen2.5-1.5B-Instruct")
-    ap.add_argument("--adapter", default=str(ROOT / "outputs" / "ft-b" / "adapter"))
+    default = ROOT / "outputs" / ("ft-c" if (ROOT / "outputs" / "ft-c" / "adapter").exists() else "ft-b") / "adapter"
+    ap.add_argument("--adapter", default=str(default))
     ap.add_argument("--share", action="store_true")
     ap.add_argument("--port", type=int, default=7860)
     args = ap.parse_args()
