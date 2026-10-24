@@ -35,7 +35,7 @@ ADAPTERS = {  # id -> (label, description), in menu order; only those present on
     "ft-b": ("CSE-Tutor FT-B", "full CSE mix, 1 epoch"),
     "ft-a": ("CSE-Tutor FT-A", "ablation: no generator data"),
 }
-TUTOR_PROMPT = SYSTEM_PROMPT.replace("Computer Networks)", "Computer Networks, Deep Learning)")
+TUTOR_PROMPT = SYSTEM_PROMPT  # exactly the prompt used in training and evaluation
 
 
 def pick_device() -> str:
