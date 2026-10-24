@@ -34,7 +34,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from data.generators import cn_gen, dbms_gen, os_gen  # noqa: E402
+from data.generators import cn_gen, dbms_gen, dl_gen, os_gen  # noqa: E402
 from data.generators.common import SYSTEM_PROMPT, write_jsonl  # noqa: E402
 from data.generators.grading import grade  # noqa: E402
 
@@ -224,6 +224,7 @@ def _gen_task(module, subject: str):
 task_gen_os = _gen_task(os_gen, "os")
 task_gen_cn = _gen_task(cn_gen, "cn")
 task_gen_dbms = _gen_task(dbms_gen, "dbms")
+task_gen_dl = _gen_task(dl_gen, "dl")
 
 
 def _run_python(code: str, timeout: int = 10) -> bool:
@@ -333,7 +334,7 @@ def task_gate(args):
     return items, convs, 512, score
 
 
-TASKS = {"csbench": task_csbench, "gen_os": task_gen_os, "gen_cn": task_gen_cn, "gen_dbms": task_gen_dbms,
+TASKS = {"csbench": task_csbench, "gen_os": task_gen_os, "gen_cn": task_gen_cn, "gen_dbms": task_gen_dbms, "gen_dl": task_gen_dl,
          "mbpp": task_mbpp, "spider": task_spider, "gate": task_gate}
 
 

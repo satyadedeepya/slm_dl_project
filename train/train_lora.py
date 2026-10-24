@@ -97,6 +97,7 @@ def main():
     ap.add_argument("--val-limit", type=int, default=300)
     ap.add_argument("--eval-steps", type=int, default=100)
     ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument("--init-adapter", help="continue training this LoRA adapter (e.g. outputs/ft-b/adapter)")
     args = ap.parse_args()
 
     import torch
@@ -140,10 +141,15 @@ def main():
     else:
         model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
         model.enable_input_require_grads()
-    model = get_peft_model(model, LoraConfig(
-        r=args.lora_r, lora_alpha=args.lora_alpha, lora_dropout=args.lora_dropout, bias="none",
-        task_type="CAUSAL_LM",
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]))
+    if args.init_adapter:
+        # Continued fine-tuning: start from an existing adapter (e.g. FT-B) instead of a fresh LoRA.
+        from peft import PeftModel
+        model = PeftModel.from_pretrained(model, args.init_adapter, is_trainable=True)
+    else:
+        model = get_peft_model(model, LoraConfig(
+            r=args.lora_r, lora_alpha=args.lora_alpha, lora_dropout=args.lora_dropout, bias="none",
+            task_type="CAUSAL_LM",
+            target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]))
     model.print_trainable_parameters()
 
     out_dir = ROOT / "outputs" / args.run_name
@@ -189,7 +195,7 @@ def main():
     tok.save_pretrained(adapter_dir)
     summary = {
         "run_name": args.run_name, "model": args.model, "device": device, "dtype": str(dtype), "qlora": args.qlora,
-        "excluded_sources": sorted(exclude), "train_examples": len(train_ds), "train_tokens": n_tokens,
+        "excluded_sources": sorted(exclude), "init_adapter": args.init_adapter, "train_examples": len(train_ds), "train_tokens": n_tokens,
         "val_examples": len(val_ds), "epochs": args.epochs, "max_steps": args.max_steps,
         "global_steps": result.global_step, "train_loss": result.training_loss, "eval_loss": metrics.get("eval_loss"),
         "lr": args.lr, "effective_batch": args.batch_size * args.grad_accum, "lora": {

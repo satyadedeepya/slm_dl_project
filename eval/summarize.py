@@ -20,6 +20,7 @@ TASK_NAMES = {
     "gen_os": "Verified OS numericals (exact match)",
     "gen_cn": "Verified CN numericals (exact match)",
     "gen_dbms": "Verified DBMS FD problems (exact match)",
+    "gen_dl": "Verified DL numericals (exact match)",
     "mbpp": "MBPP (pass@1)",
     "spider": "Spider dev (execution acc.)",
     "gate": "GATE MCQ",
