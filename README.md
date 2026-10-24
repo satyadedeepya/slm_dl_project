@@ -11,7 +11,7 @@ A LoRA fine-tune of Qwen2.5-1.5B-Instruct for CSE education (DSA, Programming, D
 ```bash
 python demo/server.py          # chat interface: conversations, model switch (FT-C / FT-B / FT-A / base), streaming, math and code
 python demo/app.py             # Gradio: verified practice problems graded automatically
-paperuild_pdf.cmd            # rebuild the paper PDF with headless Edge
+paper/build_pdf.cmd            # rebuild the paper PDF with headless Edge (Windows)
 ```
 
 The chat server needs the trained adapters in `outputs/<run>/adapter` (not in git; produced by `train/train_lora.py`).
