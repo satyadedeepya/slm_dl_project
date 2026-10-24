@@ -34,6 +34,7 @@ thead th { border-top: 1.2pt solid var(--rule); border-bottom: 0.6pt solid var(-
 tbody tr:last-child td { border-bottom: 1.2pt solid var(--rule); }
 figure, .tbl { margin: 6pt 0 8pt; break-inside: avoid; }
 figure img { width: 100%; display: block; }
+figure.wide img { width: 88%; margin: 0 auto; }
 figcaption, .cap { font-size: 7.8pt; text-align: center; margin: 3pt 0; }
 .cap { text-transform: uppercase; letter-spacing: 0.03em; }
 .cap b { font-weight: normal; }
@@ -53,7 +54,7 @@ b.sig { font-weight: bold; }
 </div>
 <div class="cols">
 
-<p class="abstract"><i>Abstract</i>&mdash;Small language models can run on a student's laptop, but they are unreliable on the numerical problems that dominate computer-science examinations. We fine-tune Qwen2.5-1.5B-Instruct with LoRA as a tutor for six subjects (data structures and algorithms, programming, databases, operating systems, computer networks and deep learning) using a mixed instruction set whose distinctive component is <i>programmatically verified</i> data: 3,000 problems whose step-by-step solutions and answers are computed by executing the underlying algorithm. All training and evaluation runs on an integrated Intel Arc GPU. On held-out test sets, fine-tuning significantly improves text-to-SQL execution accuracy (50.5&rarr;60.0), functional-dependency problems (15&rarr;30) and network numericals (1&rarr;8) over the base model (exact McNemar <i>p</i>&nbsp;&lt;&nbsp;0.05), without loss on code generation. An ablation that removes only the verified data eliminates these numerical gains. A continued-training stage adds deep learning, DL_ABSTRACT. Error analysis shows that the remaining failures are mostly procedural: the model reproduces the solution template but executes multi-step algorithms unreliably.</p>
+<p class="abstract"><i>Abstract</i>&mdash;Small language models can run on a student's laptop, but they are unreliable on the numerical problems that dominate computer-science examinations. We fine-tune Qwen2.5-1.5B-Instruct with LoRA as a tutor for six subjects (data structures and algorithms, programming, databases, operating systems, computer networks and deep learning) using a mixed instruction set whose distinctive component is <i>programmatically verified</i> data: 3,000 problems whose step-by-step solutions and answers are computed by executing the underlying algorithm. All training and evaluation runs on an integrated Intel Arc GPU. On held-out test sets, fine-tuning significantly improves text-to-SQL execution accuracy (50.5&rarr;60.0), functional-dependency problems (15&rarr;30) and network numericals (1&rarr;8) over the base model (exact McNemar <i>p</i>&nbsp;&lt;&nbsp;0.05), without loss on code generation. An ablation that removes only the verified data eliminates these numerical gains. A continued-training stage adds deep learning, which raises value-level accuracy on held-out deep-learning numericals from 15.8% to 26.0% (paired permutation <i>p</i>&nbsp;=&nbsp;0.013) while every earlier gain is retained. Error analysis shows that the remaining failures are mostly procedural: the model reproduces the solution template but executes multi-step algorithms unreliably.</p>
 <p class="keywords"><i>Index Terms</i>&mdash;small language models, LoRA, synthetic data, data verification, computer science education, text-to-SQL.</p>
 
 <h2>I. Introduction</h2>
@@ -115,29 +116,41 @@ b.sig { font-weight: bold; }
 <table>
 <thead><tr><th>Task</th><th>n</th><th>B0 0-shot</th><th>B1 3-shot</th><th>FT-A</th><th>FT-B</th><th>FT-C</th><th>p FT-B vs B0</th><th>p FT-B vs FT-A</th></tr></thead>
 <tbody>
-<tr><td>CS-Bench (DSA/OS/CN)</td><td>400</td><td>51.2</td><td><b>58.0</b></td><td>53.8</td><td>55.2</td><td>DL_CSB</td><td>0.18</td><td>0.57</td></tr>
-<tr><td>OS numericals</td><td>100</td><td>4.0</td><td>4.0</td><td>3.0</td><td>5.0</td><td>DL_OS</td><td>1.00</td><td>0.73</td></tr>
-<tr><td>CN numericals</td><td>100</td><td>1.0</td><td>2.0</td><td>0.0</td><td><b>8.0</b></td><td>DL_CN</td><td><b>0.039</b></td><td><b>0.008</b></td></tr>
-<tr><td>DBMS FD problems</td><td>100</td><td>15.0</td><td>12.0</td><td>17.0</td><td><b>30.0</b></td><td>DL_DBMS</td><td><b>0.017</b></td><td>0.060</td></tr>
-<tr><td>DL numericals</td><td>100</td><td>DL_B0</td><td>&ndash;</td><td>&ndash;</td><td>DL_FTB</td><td>DL_FTC</td><td colspan="2">DL_P</td></tr>
-<tr><td>MBPP pass@1</td><td>200</td><td>41.5</td><td>41.5</td><td>41.0</td><td>42.5</td><td>DL_MBPP</td><td>0.89</td><td>0.66</td></tr>
-<tr><td>Spider (execution)</td><td>200</td><td>50.5</td><td>&ndash;</td><td>54.5</td><td><b>60.0</b></td><td>DL_SPIDER</td><td><b>0.011</b></td><td>0.052</td></tr>
-<tr><td>GATE CS 2021&ndash;26</td><td>56</td><td>33.9</td><td>&ndash;</td><td>37.5</td><td>33.9</td><td>DL_GATE</td><td>1.00</td><td>0.82</td></tr>
+<tr><td>CS-Bench (DSA/OS/CN)</td><td>400</td><td>51.2</td><td><b>58.0</b></td><td>53.8</td><td>55.2</td><td>&ndash;</td><td>0.18</td><td>0.57</td></tr>
+<tr><td>OS numericals</td><td>100</td><td>4.0</td><td>4.0</td><td>3.0</td><td>5.0</td><td>&ndash;</td><td>1.00</td><td>0.73</td></tr>
+<tr><td>CN numericals</td><td>100</td><td>1.0</td><td>2.0</td><td>0.0</td><td><b>8.0</b></td><td>7.0</td><td><b>0.039</b></td><td><b>0.008</b></td></tr>
+<tr><td>DBMS FD problems</td><td>100</td><td>15.0</td><td>12.0</td><td>17.0</td><td><b>30.0</b></td><td><b>31.0</b></td><td><b>0.017</b></td><td>0.060</td></tr>
+<tr><td>DL numericals</td><td>100</td><td>2.0</td><td>&ndash;</td><td>&ndash;</td><td>3.0</td><td><b>5.0</b></td><td>0.45&dagger;</td><td>&ndash;</td></tr>
+<tr><td>MBPP pass@1</td><td>200</td><td>41.5</td><td>41.5</td><td>41.0</td><td>42.5</td><td>40.0</td><td>0.89</td><td>0.66</td></tr>
+<tr><td>Spider (execution)</td><td>200</td><td>50.5</td><td>&ndash;</td><td>54.5</td><td><b>60.0</b></td><td>59.5</td><td><b>0.011</b></td><td>0.052</td></tr>
+<tr><td>GATE CS 2021&ndash;26</td><td>56</td><td>33.9</td><td>&ndash;</td><td>37.5</td><td>33.9</td><td>&ndash;</td><td>1.00</td><td>0.82</td></tr>
 </tbody></table>
 </div>
-<figure>
+<figure class="wide">
 <img src="../docs/figures/accuracy.png" alt="Grouped bar chart of accuracy per task for B0, B1, FT-A and FT-B with 95% confidence intervals">
-<figcaption>Fig. 1. Accuracy per task with 95% bootstrap confidence intervals (first stage).</figcaption>
+<figcaption>Fig. 1. Accuracy per task with 95% bootstrap confidence intervals. Missing bars: run not evaluated on that task (FT-C was evaluated on the five most informative tasks).</figcaption>
 </figure>
 <h3>A. RQ1: fine-tuning versus prompting</h3>
 <p class="noindent">FT-B significantly improves over the zero-shot base model on Spider (+9.5 points, <i>p</i>&nbsp;=&nbsp;0.011), DBMS functional-dependency problems (+15.0, <i>p</i>&nbsp;=&nbsp;0.017) and network numericals (+7.0, <i>p</i>&nbsp;=&nbsp;0.039). On CS-Bench the gain (+4.0) is not significant, and about half of it comes from fewer unparseable answers (21&rarr;7 of 400); three-shot prompting remains slightly better on this knowledge-oriented benchmark. MBPP and GATE do not change significantly, so first-stage fine-tuning does not degrade code generation or examination performance. The only negative signal is CS-Bench's <i>reasoning</i> subset, which fell by 6&ndash;7 points in both fine-tuned runs (not significant at <i>n</i>&nbsp;=&nbsp;142).</p>
 <h3>B. RQ2: what the verified data contributes</h3>
 <p class="noindent">FT-A, trained on the same mix and settings minus the generator slice, stays at base-model level on every numerical task (CN 0%; closure and candidate keys 0% versus 32.8% for FT-B). The numerical gains are therefore caused by the verified data rather than by teacher Q&amp;A, textbooks or examination questions. On CS-Bench, MBPP and GATE the two runs are within noise: the generated data is specific in its effect. FT-B also trains for 35% more steps than FT-A, so part of any FT-B&ndash;FT-A difference could come from training length; a step-matched control is left to future work. CPU and disk scheduling stay at 0% for every model: FT-B reproduces Gantt charts and tables perfectly but fills them with wrong values.</p>
 <h3>C. RQ3: adding deep learning by continued training</h3>
-<p class="noindent">DL_RQ3</p>
-<figure>
+<p class="noindent">The deep-learning stage took 70&nbsp;min of training (66 steps). On the 100 held-out DL problems FT-C reaches 5.0% exact match, against 3.0% for FT-B and 2.0% for the base model (&dagger;McNemar FT-C vs B0). Exact match is a harsh metric here because every number must be right (an output shape, a parameter count and a bias all at once). Measured per expected value, with the grader's tolerance, FT-C produces 26.0% of the correct values, against 15.8% for FT-B and 12.6% for the base model (Table&nbsp;V); the improvement over FT-B is significant under a paired sign-flip permutation test (<i>p</i>&nbsp;=&nbsp;0.013; <i>p</i>&nbsp;=&nbsp;0.001 against the base model). Per problem type, value-level accuracy rises most for convolution shapes (22&rarr;47%), softmax/cross-entropy (0&rarr;56%) and classification metrics (22&rarr;44%), while one-step gradient descent (36&rarr;8%) and momentum (31&rarr;19%) get worse and attention weights and sigmoid backpropagation stay at 0%. In the convolution problems FT-C applies the right formulas (&lfloor;(N&nbsp;+&nbsp;2P&nbsp;&minus;&nbsp;K)/S&rfloor;&nbsp;+&nbsp;1 and (K&middot;K&middot;C&nbsp;+&nbsp;1)&middot;F) but often slips on multi-digit products, the same procedural pattern as in Section&nbsp;VI.</p>
+<p>The stage did not erode earlier skills: against FT-B, DBMS (31.0 vs 30.0), CN (7.0 vs 8.0), Spider (59.5 vs 60.0) and MBPP (40.0 vs 42.5) all differ by at most a few items (McNemar <i>p</i>&nbsp;&ge;&nbsp;0.38), and FT-C keeps its significant gains over the base model on DBMS (<i>p</i>&nbsp;=&nbsp;0.003) and Spider (<i>p</i>&nbsp;=&nbsp;0.015). Mixing 1,200 replay examples into a 2,107-example stage was enough to prevent forgetting at this scale.</p>
+<div class="tbl">
+<div class="cap">Table V<br><b>DL numericals (n = 100): exact match and value-level accuracy (%)</b></div>
+<table>
+<thead><tr><th>Model</th><th>Exact</th><th>Values [95% CI]</th><th>p vs prev.</th></tr></thead>
+<tbody>
+<tr><td>B0 base</td><td>2.0</td><td>12.6 [8.3&ndash;17.2]</td><td>&ndash;</td></tr>
+<tr><td>FT-B</td><td>3.0</td><td>15.8 [11.0&ndash;20.8]</td><td>0.27</td></tr>
+<tr><td>FT-C</td><td><b>5.0</b></td><td><b>26.0</b> [19.8&ndash;32.2]</td><td><b>0.013</b></td></tr>
+</tbody></table>
+</div>
+
+<figure class="wide">
 <img src="../docs/figures/loss.png" alt="Training and validation loss curves for FT-B and FT-A">
-<figcaption>Fig. 2. Training loss (rolling mean) and validation loss. The two runs use different validation samples and are not directly comparable.</figcaption>
+<figcaption>Fig. 2. Training loss (rolling mean) and validation loss. The runs use different validation samples and are not directly comparable.</figcaption>
 </figure>
 
 <h2>VI. Error Analysis</h2>
@@ -167,11 +180,11 @@ b.sig { font-weight: bold; }
 <li>FT-B trains for more steps than FT-A, which partly confounds the ablation.</li>
 <li>The GATE test has only 56 items (&plusmn;12-point intervals); MMLU was not evaluated.</li>
 <li>Error labels come from a single annotator on a quota-stratified sample.</li>
-<li>DL_LIMIT</li>
+<li>FT-C was evaluated on five of the eight tasks (DL, DBMS, CN, Spider, MBPP) to save time; CS-Bench, OS and GATE were not re-run.</li>
 </ul>
 
 <h2>IX. Conclusion</h2>
-<p class="noindent">Verified, programmatically generated training data teaches a 1.5B model procedures that neither prompting nor LLM-written data teach: functional-dependency closure and keys, subnetting and CRC, and DL_CONCL. The gains are specific and do not cost code-generation ability. The main limitation is execution of long procedures, which the model imitates rather than performs. Future work: more epochs and self-checking traces, tool use for arithmetic and simulation, preference tuning on verified correct/incorrect pairs, and a step-matched ablation.</p>
+<p class="noindent">Verified, programmatically generated training data teaches a 1.5B model procedures that neither prompting nor LLM-written data teach: functional-dependency closure and keys, subnetting and CRC; a short continued-training stage with verified problems and replay adds measurable deep-learning skill (value-level 15.8&rarr;26.0%) without forgetting. The gains are specific and do not cost code-generation ability. The main limitation is execution of long procedures, which the model imitates rather than performs. Future work: more epochs and self-checking traces, tool use for arithmetic and simulation, preference tuning on verified correct/incorrect pairs, and a step-matched ablation.</p>
 
 <h2>References</h2>
 <ol class="refs">

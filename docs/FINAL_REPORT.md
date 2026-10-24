@@ -2,6 +2,8 @@
 
 *One-month course project. Base model: Qwen2.5-1.5B-Instruct. Code, data card, results and weekly reports are in this repository.*
 
+The research paper version of this report is [paper/CSE-Tutor_paper.pdf](../paper/CSE-Tutor_paper.pdf).
+
 ## Abstract
 
 We fine-tune Qwen2.5-1.5B-Instruct with LoRA to act as a tutor for five core CSE subjects: DSA, Programming, DBMS, Operating Systems and Computer Networks.
@@ -137,6 +139,23 @@ FT-B's numerical gains therefore come from the verified data. On CS-Bench, MBPP 
 
 **What was not learned:** CPU and disk scheduling stay at 0% for every model. FT-B reproduces the Gantt-chart and table format perfectly but fills it with wrong values.
 
+### 5.3 Adding Deep Learning (FT-C; details in [dl_stage_report.md](dl_stage_report.md))
+
+FT-C continues FT-B's adapter on a 2,107-example DL stage: 600 verified DL problems, 307 DL concept Q&A items and 1,200 replay examples. It trained in 70 min.
+
+| Task | B0 | FT-B | FT-C | p (FT-C vs FT-B) |
+|---|---|---|---|---|
+| DL numericals, exact | 2.0 | 3.0 | 5.0 | 0.73 |
+| DL numericals, value-level | 12.6 | 15.8 | **26.0** | **0.013** |
+| DBMS FD | 15.0 | 30.0 | 31.0 | 1.00 |
+| CN numericals | 1.0 | 8.0 | 7.0 | 1.00 |
+| Spider | 50.5 | 60.0 | 59.5 | 1.00 |
+| MBPP | 41.5 | 42.5 | 40.0 | 0.38 |
+
+- **DL skill improves measurably.** The model learned the formulas: conv shapes 22 → 47%, softmax-CE 0 → 56%, metrics 22 → 44%, all value-level.
+- **Exact match stays low** because of multi-digit arithmetic slips.
+- **Nothing learned earlier is lost.** CS-Bench, OS and GATE were not re-run, to save time.
+
 ## 6. Error analysis (Week 4; details in [week4_report.md](week4_report.md))
 
 We hand-labelled 50 stratified FT-B errors, with GATE excluded.
@@ -153,11 +172,16 @@ We hand-labelled 50 stratified FT-B errors, with GATE excluded.
 
 No sampled error was a format failure: the model fully learned the answer format. Its main limit is *executing* multi-step procedures, especially fixed-point loops and keeping state consistent.
 
-## 7. Demo
+## 7. Demo and chat interface
 
-`python demo/app.py` starts a Gradio app with two tabs:
+**Chat interface.** `python demo/server.py`, then open http://127.0.0.1:8000:
+- A FastAPI server loads the base model once and attaches FT-C, FT-B and FT-A as named LoRA adapters.
+- The browser interface has a conversation sidebar (stored in the browser) and a model switch, including the base model.
+- Answers stream as they are generated, with Markdown, LaTeX math, tables and highlighted code.
+
+**Gradio practice demo.** `python demo/app.py` starts a Gradio app with two tabs:
 - a streaming chat;
-- a *verified practice* tab that generates a new OS, CN or DBMS problem, lets the model solve it, and grades the answer against the computed solution.
+- a *verified practice* tab that generates a new OS, CN, DBMS or DL problem, lets the model solve it, and grades the answer against the computed solution.
 
 A checkbox switches the LoRA adapter off, to compare with the base model on the same input.
 
@@ -168,6 +192,7 @@ A checkbox switches the LoRA adapter off, to compare with the base model on the 
 - **GATE n = 56** gives wide CIs (±12 points).
 - **MMLU (RQ3) was not run.** Forgetting was checked only on MBPP and GATE.
 - **The error analysis has a single annotator** and a quota-stratified sample.
+- **FT-C was evaluated on five of the eight tasks** (DL, DBMS, CN, Spider, MBPP) to save time.
 - **Training ran in bf16 LoRA, not 4-bit QLoRA,** because of the Intel GPU. Results may differ slightly on CUDA QLoRA.
 
 ## 9. Future work
