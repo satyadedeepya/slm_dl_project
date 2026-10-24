@@ -67,6 +67,9 @@ def main():
                 cells.append("–")
                 continue
             credits = [c for it, r in zip(items, read(path)) if (c := value_credit(it["final"], r["output"])) is not None]
+            if not credits:  # e.g. gen_dbms answers are attribute sets, not numbers
+                cells.append("n/a")
+                continue
             per_run[run] = credits
             lo, hi = bootstrap(credits)
             cells.append(f"{100 * sum(credits) / len(credits):.1f} [{100 * lo:.1f}–{100 * hi:.1f}]")

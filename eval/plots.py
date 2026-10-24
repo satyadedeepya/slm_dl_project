@@ -48,13 +48,15 @@ def accuracy():
     style(ax)
     width, gap = 0.8 / len(runs), 0.02
     for i, (run, label, color) in enumerate(runs):
+        labelled = False
         for j, (task, _) in enumerate(TASKS):
             res = data[run].get(task)
             if not res:
                 continue
             x = j + (i - (len(runs) - 1) / 2) * width
             acc, (lo, hi) = 100 * res["acc"], (100 * res["ci95"][0], 100 * res["ci95"][1])
-            ax.bar(x, acc, width - gap, color=color, label=label if j == 0 else None, zorder=2)
+            ax.bar(x, acc, width - gap, color=color, label=None if labelled else label, zorder=2)
+            labelled = True
             ax.errorbar(x, acc, yerr=[[acc - lo], [hi - acc]], fmt="none", ecolor=INK_2, elinewidth=0.8,
                         capsize=0, zorder=3)
             ax.text(x, hi + 1.2, f"{acc:.0f}", ha="center", va="bottom", fontsize=7, color=INK_2)
