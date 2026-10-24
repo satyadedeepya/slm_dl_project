@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CSE-Tutor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<style>
+/* Layout: a quiet sidebar of conversations on the left; one reading column (about 46rem) for the chat,
+   with the composer pinned to the bottom. Accent = blackboard green, the colour of a CS lecture hall. */
+:root {
+  --bg: #f7f7f4;
+  --panel: #eeeee9;
+  --surface: #ffffff;
+  --line: #dcdcd4;
+  --ink: #1d1f1c;
+  --ink-2: #5b5f58;
+  --ink-3: #8a8e86;
+  --accent: #2f6b4f;
+  --accent-ink: #ffffff;
+  --accent-soft: #e3eee7;
+  --code-bg: #f1f2ee;
+  --danger: #a2402b;
+  --font-display: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", Consolas, "Courier New", monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1a1c1a; --panel: #141614; --surface: #232623; --line: #343833;
+    --ink: #e9eae5; --ink-2: #b2b6ae; --ink-3: #7e837b;
+    --accent: #7cc39c; --accent-ink: #10231a; --accent-soft: #24352b; --code-bg: #1f221f; --danger: #e08a74;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1a1c1a; --panel: #141614; --surface: #232623; --line: #343833;
+  --ink: #e9eae5; --ink-2: #b2b6ae; --ink-3: #7e837b;
+  --accent: #7cc39c; --accent-ink: #10231a; --accent-soft: #24352b; --code-bg: #1f221f; --danger: #e08a74;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.6 var(--font-body); }
+button, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.app { display: grid; grid-template-columns: 17rem minmax(0, 1fr); height: 100%; }
+aside { background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column;
+  padding: 14px 12px; gap: 12px; min-height: 0; }
+.brand { display: flex; align-items: baseline; gap: 8px; padding: 4px 6px; }
+.brand b { font: 600 1.25rem/1 var(--font-display); letter-spacing: -0.01em; }
+.brand span { font: 500 0.7rem/1 var(--font-mono); color: var(--ink-3); letter-spacing: 0.04em; }
+.new { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--surface); cursor: pointer; text-align: left; }
+.new:hover { border-color: var(--accent); }
+.label { font: 600 0.68rem/1 var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3);
+  padding: 8px 6px 2px; }
+.history { list-style: none; margin: 0; padding: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; min-height: 0; flex: 1; }
+.history li { display: flex; align-items: center; border-radius: 7px; }
+.history li button.open { flex: 1; min-width: 0; text-align: left; background: none; border: 0; padding: 7px 8px; cursor: pointer;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink-2); }
+.history li.active, .history li:hover { background: var(--line); }
+.history li.active button.open { color: var(--ink); }
+.history li button.del { background: none; border: 0; color: var(--ink-3); cursor: pointer; padding: 4px 8px; visibility: hidden; }
+.history li:hover button.del { visibility: visible; }
+.foot { font-size: 0.75rem; color: var(--ink-3); padding: 0 6px; }
+
+main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+header { display: flex; align-items: center; gap: 10px; padding: 10px max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px));
+  border-bottom: 1px solid var(--line); }
+header .menu { display: none; background: none; border: 1px solid var(--line); border-radius: 7px; padding: 4px 9px; cursor: pointer; }
+.model { display: flex; align-items: center; gap: 8px; }
+.model select { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; max-width: 16rem; }
+.model small { color: var(--ink-3); font-size: 0.8rem; }
+header .spacer { flex: 1; }
+.status { font: 0.75rem var(--font-mono); color: var(--ink-3); }
+.status.ok::before { content: "● "; color: var(--accent); }
+.status.bad::before { content: "● "; color: var(--danger); }
+
+.scroll { flex: 1; overflow-y: auto; min-height: 0; }
+.thread { max-width: 46rem; margin: 0 auto; padding-block: 28px 12px; padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 22px; }
+.msg.user { align-self: flex-end; max-width: 85%; background: var(--accent-soft); padding: 10px 14px; border-radius: 14px 14px 4px 14px;
+  white-space: pre-wrap; overflow-wrap: anywhere; }
+.msg.bot { min-width: 0; }
+.msg.bot .who { font: 600 0.72rem/1 var(--font-body); letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
+.msg.bot .body { overflow-wrap: anywhere; }
+.msg.bot .body > :first-child { margin-top: 0; }
+.msg.bot .body p { margin: 0 0 0.8em; }
+.msg.bot .body table { border-collapse: collapse; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+.msg.bot .body .tbl { overflow-x: auto; margin: 0 0 0.8em; }
+.msg.bot .body th, .msg.bot .body td { border: 1px solid var(--line); padding: 4px 9px; text-align: left; }
+.msg.bot .body th { background: var(--panel); }
+.msg.bot .body code { font: 0.88em var(--font-mono); background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+.msg.bot .body pre { position: relative; background: var(--code-bg); border: 1px solid var(--line); border-radius: 9px; padding: 12px 14px;
+  overflow-x: auto; }
+.msg.bot .body pre code { background: none; padding: 0; font-size: 0.85rem; }
+.copy { position: absolute; top: 6px; right: 6px; font: 0.72rem var(--font-body); background: var(--surface); border: 1px solid var(--line);
+  border-radius: 6px; padding: 2px 8px; cursor: pointer; color: var(--ink-2); }
+.meta { margin-top: 6px; font: 0.72rem var(--font-mono); color: var(--ink-3); display: flex; gap: 12px; }
+.meta button { background: none; border: 0; padding: 0; color: var(--ink-3); cursor: pointer; font: inherit; }
+.meta button:hover { color: var(--accent); }
+.caret::after { content: "▍"; color: var(--accent); animation: blink 1s steps(2) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .caret::after { animation: none; } }
+
+.welcome { padding-top: 6vh; display: flex; flex-direction: column; gap: 18px; }
+.welcome h1 { font: 600 2rem/1.15 var(--font-display); margin: 0; letter-spacing: -0.015em; text-wrap: balance; }
+.welcome p { margin: 0; color: var(--ink-2); max-width: 36rem; }
+.subjects { display: flex; flex-wrap: wrap; gap: 6px; }
+.subjects span { font: 500 0.75rem var(--font-mono); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; color: var(--ink-2); }
+.starters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.starters button { text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px;
+  cursor: pointer; display: flex; flex-direction: column; gap: 4px; }
+.starters button:hover { border-color: var(--accent); }
+.starters b { font: 600 0.7rem var(--font-body); letter-spacing: 0.07em; text-transform: uppercase; color: var(--accent); }
+.starters span { color: var(--ink); font-size: 0.92rem; }
+
+.composer { padding-block: 10px 14px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.box { max-width: 46rem; margin: 0 auto; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 10px 8px 14px;
+  display: flex; flex-direction: column; gap: 6px; box-shadow: 0 1px 2px rgb(0 0 0 / 0.04); }
+.box:focus-within { border-color: var(--accent); }
+.box textarea { border: 0; outline: 0; resize: none; background: none; min-height: 1.6em; max-height: 14rem; line-height: 1.5; }
+.row { display: flex; align-items: center; gap: 10px; }
+.row label { font-size: 0.78rem; color: var(--ink-3); display: flex; align-items: center; gap: 6px; }
+.row .spacer { flex: 1; }
+.send { border: 0; background: var(--accent); color: var(--accent-ink); border-radius: 9px; padding: 7px 14px; font-weight: 600; cursor: pointer; }
+.send:disabled { opacity: 0.45; cursor: default; }
+.send.stop { background: var(--ink); color: var(--bg); }
+.hint { max-width: 46rem; margin: 6px auto 0; font-size: 0.72rem; color: var(--ink-3); text-align: center; }
+
+@media (max-width: 760px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  aside { position: fixed; inset: 0 auto 0 0; width: min(82vw, 18rem); z-index: 20; transform: translateX(-100%); transition: transform .2s;
+    padding-top: calc(14px + env(safe-area-inset-top, 0px)); padding-left: max(12px, env(safe-area-inset-left, 0px)); }
+  aside.open { transform: none; box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.35); }
+  header .menu { display: inline-block; }
+  .starters { grid-template-columns: minmax(0, 1fr); }
+  .model small { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside id="side">
+    <div class="brand"><b>CSE-Tutor</b><span>1.5B · LoRA</span></div>
+    <button class="new" id="newChat" type="button">＋ New chat</button>
+    <div class="label">Conversations</div>
+    <ul class="history" id="history"></ul>
+    <div class="foot">Runs locally on your GPU. Conversations are kept in this browser only.</div>
+  </aside>
+  <main>
+    <header>
+      <button class="menu" id="menu" type="button" aria-label="Show conversations">☰</button>
+      <div class="model">
+        <select id="model" aria-label="Model"></select>
+        <small id="modelDesc"></small>
+      </div>
+      <div class="spacer"></div>
+      <span class="status" id="status">connecting…</span>
+    </header>
+    <div class="scroll" id="scroll">
+      <div class="thread" id="thread"></div>
+    </div>
+    <div class="composer">
+      <form class="box" id="form">
+        <textarea id="input" rows="1" placeholder="Ask about DSA, programming, DBMS, OS, networks or deep learning…"></textarea>
+        <div class="row">
+          <label for="temp">Creativity
+            <select id="temp"><option value="0">Precise</option><option value="0.5">Balanced</option><option value="0.9">Creative</option></select>
+          </label>
+          <div class="spacer"></div>
+          <button class="send" id="send" type="submit" disabled>Send</button>
+        </div>
+      </form>
+      <div class="hint">Enter to send · Shift+Enter for a new line · A 1.5B model can be wrong; check numerical answers.</div>
+    </div>
+  </main>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+const STARTERS = [
+  ["Deep learning", "A conv layer takes a 32 × 32 × 3 input with 16 filters of size 5 × 5, stride 1, padding 2. Find the output size and the number of parameters."],
+  ["Operating systems", "Explain the difference between deadlock prevention and deadlock avoidance, with an example."],
+  ["DBMS", "For R(A, B, C, D) with FDs {A → B, B → C, C → D}, find the closure of A and all candidate keys."],
+  ["Computer networks", "Given 192.168.10.77/27, find the network address, broadcast address and number of usable hosts."],
+  ["DSA", "Why is building a binary heap from n elements O(n) and not O(n log n)?"],
+  ["Programming", "Write a Python function that checks whether a string of brackets is balanced."],
+];
+const store = {
+  load() { try { return JSON.parse(localStorage.getItem("cse-tutor-chats") || "[]"); } catch { return []; } },
+  save(chats) { try { localStorage.setItem("cse-tutor-chats", JSON.stringify(chats.slice(0, 50))); } catch {} },
+};
+let chats = store.load();
+let current = null;   // the open chat object
+let models = [];
+let busy = false;
+
+function md(text) {
+  if (!window.marked) { const d = document.createElement("div"); d.textContent = text; return d.innerHTML.replace(/\n/g, "<br>"); }
+  const html = marked.parse(text, { gfm: true, breaks: false });
+  return window.DOMPurify ? DOMPurify.sanitize(html) : html;
+}
+function enhance(el) {
+  el.querySelectorAll("table").forEach((t) => { if (!t.parentElement.classList.contains("tbl")) { const w = document.createElement("div"); w.className = "tbl"; t.replaceWith(w); w.appendChild(t); } });
+  el.querySelectorAll("pre").forEach((pre) => {
+    const code = pre.querySelector("code");
+    if (code && window.hljs) { try { hljs.highlightElement(code); } catch {} }
+    if (!pre.querySelector(".copy")) {
+      const b = document.createElement("button"); b.className = "copy"; b.type = "button"; b.textContent = "Copy";
+      b.onclick = async () => { try { await navigator.clipboard.writeText(code ? code.innerText : pre.innerText); b.textContent = "Copied"; } catch { b.textContent = "Select and copy"; } setTimeout(() => (b.textContent = "Copy"), 1500); };
+      pre.appendChild(b);
+    }
+  });
+}
+function modelLabel(id) { return (models.find((m) => m.id === id) || { label: id }).label; }
+
+function renderHistory() {
+  const ul = $("history"); ul.innerHTML = "";
+  for (const c of chats) {
+    const li = document.createElement("li"); if (current && c.id === current.id) li.className = "active";
+    const open = document.createElement("button"); open.className = "open"; open.type = "button"; open.textContent = c.title || "New chat";
+    open.onclick = () => { current = c; render(); $("side").classList.remove("open"); };
+    const del = document.createElement("button"); del.className = "del"; del.type = "button"; del.textContent = "✕"; del.setAttribute("aria-label", "Delete conversation");
+    del.onclick = () => { chats = chats.filter((x) => x.id !== c.id); if (current && current.id === c.id) current = null; store.save(chats); render(); };
+    li.append(open, del); ul.appendChild(li);
+  }
+}
+function botNode(m, streaming) {
+  const wrap = document.createElement("div"); wrap.className = "msg bot";
+  const who = document.createElement("div"); who.className = "who"; who.textContent = modelLabel(m.model);
+  const body = document.createElement("div"); body.className = "body" + (streaming ? " caret" : "");
+  body.innerHTML = md(m.content || ""); enhance(body);
+  wrap.append(who, body);
+  if (!streaming && m.seconds != null) {
+    const meta = document.createElement("div"); meta.className = "meta";
+    const t = document.createElement("span"); t.textContent = `${m.seconds}s`;
+    const copy = document.createElement("button"); copy.type = "button"; copy.textContent = "Copy answer";
+    copy.onclick = async () => { try { await navigator.clipboard.writeText(m.content); copy.textContent = "Copied"; } catch { copy.textContent = "Copy failed"; } };
+    meta.append(t, copy); wrap.appendChild(meta);
+  }
+  return wrap;
+}
+function render() {
+  renderHistory();
+  const th = $("thread"); th.innerHTML = "";
+  if (!current || !current.messages.length) {
+    const w = document.createElement("div"); w.className = "welcome";
+    w.innerHTML = `<h1>What are you studying today?</h1>
+      <p>CSE-Tutor is Qwen2.5-1.5B fine-tuned on verified CS problems, exam questions, textbooks, Spider and MBPP. It explains step by step and ends numerical answers with a final line you can check.</p>
+      <div class="subjects"><span>DSA</span><span>Programming</span><span>DBMS</span><span>Operating systems</span><span>Computer networks</span><span>Deep learning</span></div>`;
+    const grid = document.createElement("div"); grid.className = "starters";
+    for (const [tag, q] of STARTERS) {
+      const b = document.createElement("button"); b.type = "button";
+      b.innerHTML = `<b></b><span></span>`; b.querySelector("b").textContent = tag; b.querySelector("span").textContent = q;
+      b.onclick = () => { $("input").value = q; send(); };
+      grid.appendChild(b);
+    }
+    w.appendChild(grid); th.appendChild(w); return;
+  }
+  for (const m of current.messages) {
+    if (m.role === "user") { const d = document.createElement("div"); d.className = "msg user"; d.textContent = m.content; th.appendChild(d); }
+    else th.appendChild(botNode(m, false));
+  }
+  $("scroll").scrollTop = $("scroll").scrollHeight;
+}
+function setBusy(b) {
+  busy = b; const s = $("send");
+  s.textContent = b ? "Stop" : "Send"; s.classList.toggle("stop", b); s.disabled = !b && !$("input").value.trim();
+}
+async function send() {
+  const text = $("input").value.trim();
+  if (!text || busy) return;
+  if (!current) { current = { id: Date.now().toString(36), title: text.slice(0, 60), messages: [] }; chats.unshift(current); }
+  const model = $("model").value;
+  current.messages.push({ role: "user", content: text });
+  const reply = { role: "assistant", content: "", model };
+  $("input").value = ""; autosize(); render();
+  const node = botNode(reply, true); $("thread").appendChild(node);
+  const body = node.querySelector(".body"); setBusy(true);
+  try {
+    const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model, temperature: parseFloat($("temp").value), messages: current.messages.map(({ role, content }) => ({ role, content })) }) });
+    if (!res.ok) throw new Error(`server answered ${res.status}`);
+    const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = "";
+    for (;;) {
+      const { value, done } = await reader.read(); if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf("\n\n")) >= 0) {
+        const line = buf.slice(0, i).replace(/^data: /, ""); buf = buf.slice(i + 2);
+        const ev = JSON.parse(line);
+        if (ev.delta) { reply.content += ev.delta; body.innerHTML = md(reply.content); enhance(body);
+          const sc = $("scroll"); if (sc.scrollHeight - sc.scrollTop - sc.clientHeight < 160) sc.scrollTop = sc.scrollHeight; }
+        if (ev.done) reply.seconds = ev.seconds;
+      }
+    }
+  } catch (e) {
+    reply.content += `\n\n*Could not reach the model (${e.message}). Check that \`python demo/server.py\` is running.*`;
+  }
+  current.messages.push(reply); store.save(chats); setBusy(false); render();
+}
+function autosize() { const t = $("input"); t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 224) + "px"; $("send").disabled = !busy && !t.value.trim(); }
+
+$("input").addEventListener("input", autosize);
+$("input").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
+$("form").addEventListener("submit", (e) => { e.preventDefault(); if (busy) fetch("/api/stop", { method: "POST" }); else send(); });
+$("newChat").onclick = () => { current = null; render(); $("input").focus(); $("side").classList.remove("open"); };
+$("menu").onclick = () => $("side").classList.toggle("open");
+$("model").onchange = () => { const m = models.find((x) => x.id === $("model").value); $("modelDesc").textContent = m ? m.description : ""; };
+
+fetch("/api/models").then((r) => r.json()).then((data) => {
+  models = data.models;
+  for (const m of models) { const o = document.createElement("option"); o.value = m.id; o.textContent = m.label; $("model").appendChild(o); }
+  $("model").onchange();
+  $("status").textContent = `ready · ${data.device}`; $("status").className = "status ok";
+}).catch(() => { $("status").textContent = "model server offline"; $("status").className = "status bad"; });
+render();
+</script>
+</body>
+</html>
