@@ -177,32 +177,43 @@ def cmd_answer(args) -> None:
 
 
 def cmd_judge(args) -> None:
-    from data.build_concepts import DEFAULT_MODELS, Gemini
-    gem = Gemini(DEFAULT_MODELS, rpm=args.rpm)
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+
+    from data.build_concepts import Gemini
     ans = {m: {r["id"]: r for r in read_jsonl(OUT / f"answers_{m}.jsonl")} for m in (args.a, args.b)}
     path = OUT / f"judge_{args.a}_vs_{args.b}.jsonl"
     done = {(r["id"], r["order"]): r for r in read_jsonl(path)} if path.exists() else {}
     qs = questions()
-    for k, q in enumerate(qs, 1):
-        for order in ("ab", "ba"):
-            if (q["id"], order) in done or q["id"] not in ans[args.a] or q["id"] not in ans[args.b]:
-                continue
-            first, second = (args.a, args.b) if order == "ab" else (args.b, args.a)
-            ref = (f"\nReference solution (verified correct; use it to check correctness):\n<<<\n{q['reference']}\n>>>\n"
-                   if q["kind"] == "numerical" else "")
-            note = ("If the final answer differs from the reference, correctness is at most 2."
-                    if q["kind"] == "numerical" else "")
-            prompt = JUDGE_PROMPT.format(question=q["question"], reference=ref, correctness_note=note,
-                                         a=plain_math(ans[first][q["id"]]["answer"]),
-                                         b=plain_math(ans[second][q["id"]]["answer"]))
-            v = gem.generate_json(prompt, temperature=0.0)
-            if isinstance(v, list):
-                v = v[0]
-            winner = {"A": first, "B": second}.get(v.get("winner"), "tie")
+    todo = [(q, order) for q in qs for order in ("ab", "ba")
+            if (q["id"], order) not in done and q["id"] in ans[args.a] and q["id"] in ans[args.b]]
+    lock = threading.local(), threading.Lock()
+
+    def judge(task) -> None:
+        q, order = task
+        if not hasattr(lock[0], "gem"):  # one client per thread, all with the same fixed judge model
+            lock[0].gem = Gemini([args.judge_model], rpm=args.rpm, patience=12)  # no fallback: retry longer
+        gem = lock[0].gem
+        first, second = (args.a, args.b) if order == "ab" else (args.b, args.a)
+        ref = (f"\nReference solution (verified correct; use it to check correctness):\n<<<\n{q['reference']}\n>>>\n"
+               if q["kind"] == "numerical" else "")
+        note = ("If the final answer differs from the reference, correctness is at most 2."
+                if q["kind"] == "numerical" else "")
+        prompt = JUDGE_PROMPT.format(question=q["question"], reference=ref, correctness_note=note,
+                                     a=plain_math(ans[first][q["id"]]["answer"]),
+                                     b=plain_math(ans[second][q["id"]]["answer"]))
+        v = gem.generate_json(prompt, temperature=0.0)
+        if isinstance(v, list):
+            v = v[0]
+        winner = {"A": first, "B": second}.get(v.get("winner"), "tie")
+        with lock[1]:
             done[(q["id"], order)] = {"id": q["id"], "order": order, "judge": gem.version, "winner": winner,
                                       "scores": {first: v.get("A"), second: v.get("B")}, "reason": v.get("reason")}
             write_jsonl(list(done.values()), path)
-            print(f"[{k}/{len(qs)}] {q['id']} {order}: {winner}", flush=True)
+            print(f"[{len(done)}/{2 * len(qs)}] {q['id']} {order}: {winner}", flush=True)
+
+    with ThreadPoolExecutor(args.workers) as pool:
+        list(pool.map(judge, todo))
 
 
 def sign_test(wins: int, losses: int) -> float:
@@ -271,7 +282,9 @@ def main() -> None:
     j = sub.add_parser("judge")
     j.add_argument("--a", required=True)
     j.add_argument("--b", required=True)
-    j.add_argument("--rpm", type=float, default=8)
+    j.add_argument("--rpm", type=float, default=6, help="per worker")
+    j.add_argument("--workers", type=int, default=3)
+    j.add_argument("--judge-model", default="gemma-4-31b-it", help="large free quota; same judge for all runs")
     r = sub.add_parser("report")
     r.add_argument("--a", required=True)
     r.add_argument("--b", required=True)

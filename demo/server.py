@@ -32,7 +32,8 @@ from data.generators.common import SYSTEM_PROMPT  # noqa: E402
 
 STATIC = Path(__file__).resolve().parent / "static"
 ADAPTERS = {  # id -> (label, description), in menu order; only those present on disk are offered
-    "ft-d": ("CSE-Tutor FT-D", "FT-C + explanation stage (recommended)"),
+    "ft-e": ("CSE-Tutor FT-E", "FT-C + full explanation stage (recommended)"),
+    "ft-d": ("CSE-Tutor FT-D", "FT-C + short explanation stage"),
     "ft-c": ("CSE-Tutor FT-C", "FT-B + Deep Learning stage"),
     "ft-b": ("CSE-Tutor FT-B", "full CSE mix, 1 epoch"),
     "ft-a": ("CSE-Tutor FT-A", "ablation: no generator data"),

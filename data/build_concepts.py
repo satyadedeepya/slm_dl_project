@@ -97,7 +97,7 @@ class Gemini:
     """Minimal Gemini client. Free-tier daily quotas are per model, so when one model's daily
     quota is used up the client moves on to the next model in `models`."""
 
-    def __init__(self, models: list[str], rpm: float):
+    def __init__(self, models: list[str], rpm: float, patience: int = 3):
         self.key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or _key_from_dotenv()
         if not self.key:
             raise SystemExit("Set GEMINI_API_KEY (environment or a line GEMINI_API_KEY=... in the git-ignored .env "
@@ -107,6 +107,8 @@ class Gemini:
         self.last = 0.0
         self.calls = 0
         self.version = self.models[0]
+        self.no_thinking: set[str] = set()
+        self.patience = patience  # consecutive failures before moving to the next model
 
     @property
     def model(self) -> str:
@@ -130,16 +132,19 @@ class Gemini:
         print(f"    {dropped}: {reason}; switching to {self.models[0]}", flush=True)
 
     def generate_json(self, prompt: str, temperature: float, thinking_budget: int | None = None):
-        body = {"contents": [{"role": "user", "parts": [{"text": prompt}]}],
-                "generationConfig": {"temperature": temperature, "responseMimeType": "application/json",
-                                     "maxOutputTokens": 32768}}
-        if thinking_budget is not None:  # 0 turns thinking off: much faster for writing tasks
-            body["generationConfig"]["thinkingConfig"] = {"thinkingBudget": thinking_budget}
         attempt = 0  # consecutive failures on the current model
         while True:
-            if attempt >= 3:  # overloaded or producing broken JSON: move on rather than burn quota
+            if attempt >= self.patience:  # overloaded or producing broken JSON: move on rather than burn quota
                 self._next_model("3 consecutive failures")
                 attempt = 0
+            gemma = self.model.startswith("gemma")  # Gemma: no JSON mode and no thinking settings
+            config = {"temperature": temperature, "maxOutputTokens": 32768}
+            if not gemma:
+                config["responseMimeType"] = "application/json"
+            thinking = thinking_budget is not None and not gemma and self.model not in self.no_thinking
+            if thinking:  # 0 turns thinking off: much faster for writing tasks
+                config["thinkingConfig"] = {"thinkingBudget": thinking_budget}
+            body = {"contents": [{"role": "user", "parts": [{"text": prompt}]}], "generationConfig": config}
             wait = self.min_interval - (time.time() - self.last)
             if wait > 0:
                 time.sleep(wait)
@@ -150,6 +155,7 @@ class Gemini:
                 self.version = data.get("modelVersion", self.model)  # concrete model behind an alias
                 text = "".join(p.get("text", "") for p in data["candidates"][0]["content"]["parts"]
                                if not p.get("thought"))
+                text = re.sub(r"^\s*```(?:json)?\s*|\s*```\s*$", "", text)  # Gemma wraps JSON in a code fence
                 return json.loads(text)
             except urllib.error.HTTPError as e:
                 detail = e.read().decode(errors="ignore")
@@ -159,9 +165,12 @@ class Gemini:
                 if e.code == 404:
                     self._next_model("model not available")
                     continue
+                if e.code == 400 and thinking:  # this model does not accept a thinking budget
+                    self.no_thinking.add(self.model)
+                    continue
                 attempt += 1
                 if e.code in (429, 500, 503):
-                    delay = min(120, 15 * 2 ** (attempt - 1))
+                    delay = min(120, 15 * 2 ** min(attempt - 1, 3))
                     m = re.search(r'"retryDelay":\s*"(\d+)s"', detail)
                     if m:
                         delay = int(m.group(1)) + 2

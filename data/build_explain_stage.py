@@ -37,6 +37,7 @@ from eval.explain_eval import CONCEPT_QUESTIONS  # noqa: E402
 PROC = ROOT / "data" / "processed"
 SFT = ROOT / "data" / "external" / "sft"
 CACHE = ROOT / "data" / "concepts" / "explain_cache"
+EXPANDED = ROOT / "data" / "concepts" / "explain_cache_v2"  # fuller versions of short teacher answers
 OUT_QA = PROC / "explain_qa.jsonl"
 
 STYLE = """You are CSE-Tutor, a patient Computer Science teacher writing model answers for undergraduate students.
@@ -62,6 +63,27 @@ Questions:
 {items}
 
 Return JSON only: a list with one object per question, in the same order: {{"id": "<id>", "answer": "..."}}"""
+
+
+EXPAND = """You are CSE-Tutor, a patient Computer Science teacher. Below are questions with short model answers that are
+correct but too brief for a beginner. Rewrite each answer into a fuller teaching answer of 250-350 words:
+
+1. Keep the opening direct answer (1-2 plain sentences).
+2. Keep the numbered key points with bold labels, but explain each one in 2-3 sentences: what happens, why it
+   matters, and how it connects to the next point. Add a missing key point if the topic needs it.
+3. Add (or improve) one concrete worked example: real numbers, a tiny table, a short code snippet, or a step-by-step
+   trace. For a "difference between" question, use a small comparison table.
+4. Optionally add one short "**Common mistake:**" line if it really helps.
+5. End with the "**In short:**" line.
+
+Rules: keep every fact correct (fix the short answer if anything in it is wrong); plain friendly language; no LaTeX
+or dollar signs (write math with Unicode: ×, ≥, Σ, ², subscripts); code in fenced blocks; do not mention these
+instructions.
+
+Items:
+{items}
+
+Return JSON only: a list with one object per item, in the same order: {{"id": "<id>", "answer": "..."}}"""
 
 
 def read(path: Path) -> list[dict]:
@@ -116,11 +138,16 @@ def cmd_teach(args) -> None:
     from data.build_concepts import DEFAULT_MODELS, Gemini
     CACHE.mkdir(parents=True, exist_ok=True)
     qs = questions()
-    batches = [qs[i:i + args.batch] for i in range(0, len(qs), args.batch)]
-    todo = [b for b in range(len(batches)) if not (CACHE / f"batch_{b:04d}.json").exists()]
+    have = set()
+    for path in CACHE.glob("*.json"):
+        have |= {k for k, v in json.loads(path.read_text(encoding="utf-8"))["answers"].items() if v}
+    rest = [q for q in qs if q["id"] not in have]  # resumable, whatever batch size earlier runs used
+    batches = [rest[i:i + args.batch] for i in range(0, len(rest), args.batch)]
+    todo = list(range(len(batches)))
+    models = args.models or DEFAULT_MODELS
 
     def work(worker: int) -> None:
-        gem = Gemini(DEFAULT_MODELS, rpm=args.rpm)  # one client per thread (the client is not thread-safe)
+        gem = Gemini(models, rpm=args.rpm)  # one client per thread (the client is not thread-safe)
         for b in todo[worker::args.workers]:
             batch = batches[b]
             items = "\n".join(json.dumps({"id": q["id"], "question": q["question"]}, ensure_ascii=False) for q in batch)
@@ -128,7 +155,7 @@ def cmd_teach(args) -> None:
             out = gem.generate_json(STYLE.format(items=items), temperature=0.4, thinking_budget=0)
             answers = ({a.get("id"): a.get("answer", "") for a in out if isinstance(a, dict)}
                        if isinstance(out, list) else {})
-            (CACHE / f"batch_{b:04d}.json").write_text(
+            (CACHE / f"part_{batch[0]['id']}.json").write_text(
                 json.dumps({"model": gem.version, "answers": answers}, ensure_ascii=False), encoding="utf-8")
             print(f"[{b + 1}/{len(batches)}] {sum(1 for q in batch if answers.get(q['id']))}/{len(batch)} answers "
                   f"({gem.version})", flush=True)
@@ -138,12 +165,54 @@ def cmd_teach(args) -> None:
     export(qs)
 
 
-def export(qs: list[dict]) -> None:
+def cached(directory: Path) -> tuple[dict, dict]:
     answers, models = {}, {}
-    for path in sorted(CACHE.glob("batch_*.json")):
+    for path in sorted(directory.glob("*.json")):
         data = json.loads(path.read_text(encoding="utf-8"))
         for k, v in data["answers"].items():
-            answers[k], models[k] = v, data["model"]
+            if v:
+                answers[k], models[k] = v, data["model"]
+    return answers, models
+
+
+def cmd_expand(args) -> None:
+    """Rewrite short teacher answers (< --min-words) into fuller ones; resumable."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    from data.build_concepts import Gemini
+    EXPANDED.mkdir(parents=True, exist_ok=True)
+    qs = {q["id"]: q for q in questions()}
+    answers, _ = cached(CACHE)
+    done, _ = cached(EXPANDED)
+    short = [k for k, a in answers.items() if k in qs and k not in done and len(a.split()) < args.min_words]
+    batches = [short[i:i + args.batch] for i in range(0, len(short), args.batch)]
+    print(f"{len(short)} short answers to expand in {len(batches)} batches", flush=True)
+
+    def work(worker: int) -> None:
+        gem = Gemini(args.models, rpm=args.rpm, patience=8)
+        for b in range(worker, len(batches), args.workers):
+            batch = batches[b]
+            items = "\n".join(json.dumps({"id": k, "question": qs[k]["question"], "short_answer": answers[k]},
+                                         ensure_ascii=False) for k in batch)
+            out = gem.generate_json(EXPAND.format(items=items), temperature=0.4, thinking_budget=0)
+            got = ({a.get("id"): a.get("answer", "") for a in out if isinstance(a, dict)}
+                   if isinstance(out, list) else {})
+            (EXPANDED / f"part_{batch[0]}.json").write_text(
+                json.dumps({"model": gem.version, "answers": got}, ensure_ascii=False), encoding="utf-8")
+            print(f"[{b + 1}/{len(batches)}] {sum(1 for k in batch if got.get(k))}/{len(batch)} expanded "
+                  f"({gem.version})", flush=True)
+
+    with ThreadPoolExecutor(args.workers) as pool:
+        list(pool.map(work, range(args.workers)))
+    export(list(qs.values()))
+
+
+def export(qs: list[dict]) -> None:
+    answers, models = cached(CACHE)
+    longer, longer_models = cached(EXPANDED)  # expanded answers replace the short originals
+    for k, v in longer.items():
+        if len(v.split()) > len(answers.get(k, "").split()):
+            answers[k], models[k] = v, f"{models.get(k, '?')}+{longer_models[k]}"
     rows, dropped = [], Counter()
     for q in qs:
         a = (answers.get(q["id"]) or "").strip()
@@ -152,7 +221,7 @@ def export(qs: list[dict]) -> None:
             continue
         a = plain_math(a) if has_latex(a) else a
         n = len(a.split())
-        if n < 80 or n > 450:
+        if n < 80 or n > 500:
             dropped["length"] += 1
             continue
         rows.append({"id": f"explain-{q['id']}", "subject": q["subject"], "topic": q["topic"],
@@ -195,14 +264,14 @@ def cmd_mix(args) -> None:
     gen_val = [r for r in read(SFT / "sft_val_full.jsonl") if r.get("source") == "generator"]
     val = [clean(r) for r in val_explain + rng.sample(gen_val, min(50, len(gen_val)))]
 
-    write(train, SFT / "explain_stage_train.jsonl")
-    write(val, SFT / "explain_stage_val.jsonl")
+    write(train, SFT / f"{args.tag}_train.jsonl")
+    write(val, SFT / f"{args.tag}_val.jsonl")
     report = {"train": len(train), "val": len(val), "explain": len(explain), "generator_replay": len(gen),
               "code_replay": len(code), "train_by_source": Counter(r.get("source", "?").split(":")[0] for r in train),
               "train_by_subject": Counter(r.get("subject") for r in train),
               "explain_median_words": sorted(len(r["messages"][-1]["content"].split()) for r in explain)[len(explain) // 2],
               "targets_with_latex": sum(has_latex(r["messages"][-1]["content"]) for r in train)}
-    (PROC / "explain_stage_report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
+    (PROC / f"{args.tag}_report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(json.dumps(report, indent=2))
 
 
@@ -210,16 +279,24 @@ def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
     t = sub.add_parser("teach")
-    t.add_argument("--batch", type=int, default=8)
+    t.add_argument("--batch", type=int, default=12)
     t.add_argument("--rpm", type=float, default=4, help="per worker")
-    t.add_argument("--workers", type=int, default=8)
+    t.add_argument("--workers", type=int, default=4)
+    t.add_argument("--models", nargs="+", help="teacher models in fallback order (default: build_concepts list)")
+    e = sub.add_parser("expand")
+    e.add_argument("--min-words", type=int, default=220)
+    e.add_argument("--batch", type=int, default=5)
+    e.add_argument("--rpm", type=float, default=4, help="per worker")
+    e.add_argument("--workers", type=int, default=4)
+    e.add_argument("--models", nargs="+", default=["gemma-4-31b-it", "gemini-3.8-flash", "gemini-flash-latest"])
     m = sub.add_parser("mix")
     m.add_argument("--gen-per-subject", type=int, default=250)
     m.add_argument("--gen-dl", type=int, default=300)
     m.add_argument("--code", type=int, default=250)
     m.add_argument("--seed", type=int, default=42)
+    m.add_argument("--tag", default="explain_stage", help="output name: FT-D used explain_stage, FT-E explain_stage_v2")
     args = ap.parse_args()
-    {"teach": cmd_teach, "mix": cmd_mix}[args.cmd](args)
+    {"teach": cmd_teach, "expand": cmd_expand, "mix": cmd_mix}[args.cmd](args)
 
 
 if __name__ == "__main__":
