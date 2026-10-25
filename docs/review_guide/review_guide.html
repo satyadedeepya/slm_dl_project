@@ -58,7 +58,7 @@ td.n, th.n { text-align: right; }
 .up { color: var(--accent); font-weight: 600; }
 
 /* pipeline diagram */
-.flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5pt; margin: 8pt 0 12pt; break-inside: avoid; }
+.flow { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5pt; margin: 8pt 0 12pt; break-inside: avoid; }
 .flow div { border: 0.9pt solid var(--accent); border-radius: 5pt; padding: 6pt 6pt 7pt; position: relative; background: #fff; }
 .flow div b { display: block; font: 600 9.5pt var(--sans); color: var(--accent); margin-bottom: 2pt; }
 .flow div span { font-size: 8.3pt; color: var(--ink-2); line-height: 1.35; display: block; }
@@ -109,13 +109,14 @@ figcaption { font-size: 8.5pt; color: var(--ink-2); margin-top: 3pt; }
   <h3>The problem</h3>
   <p>Students need help with CS subjects, especially <b>numerical problems</b> like CPU scheduling, page faults, subnetting, normal forms and CNN output sizes. Big AI models (like ChatGPT) are good at this but need the internet and can cost money. Small models run on your own laptop for free, but they get these numerical problems wrong.</p>
 
-  <h3>What we did, in five steps</h3>
+  <h3>What we did, in six steps</h3>
   <div class="flow">
     <div><b>1. Baseline</b><span>Measured how good the untrained model is.</span></div>
     <div><b>2. Data</b><span>Built 9,335 examples, including 2,400 code-verified problems.</span></div>
     <div><b>3. Train</b><span>Fine-tuned with LoRA: FT-B (full) and FT-A (without verified data).</span></div>
     <div><b>4. Analyse</b><span>Tested on unseen questions, checked statistics, studied 50 mistakes.</span></div>
     <div><b>5. Extend</b><span>Added Deep Learning (FT-C), a chat app and a research paper.</span></div>
+    <div><b>6. Explain better</b><span>Blind-judged explanations; trained FT-D and FT-E on teaching-style answers.</span></div>
   </div>
 
   <h3>What we found</h3>
@@ -124,6 +125,7 @@ figcaption { font-size: 8.5pt; color: var(--ink-2); margin-top: 3pt; }
     <li><b>The verified data is the reason.</b> A copy of the model trained without it (FT-A) did not improve on these problems at all.</li>
     <li><b>Nothing broke:</b> coding ability (MBPP) stayed the same.</li>
     <li><b>Deep Learning was added in about 70 minutes of training</b> without losing earlier skills; the share of correct DL numbers rose from 15.8% to 26.0%.</li>
+    <li><b>Explanations:</b> after two extra training stages on teaching-style answers, the final model (FT-E) wins numerical questions 13–5 against the base model in a blind comparison while the base model still explains open concept questions slightly better (6–11–3, not a significant difference).</li>
     <li><b>Honest weakness:</b> the model learns the <i>method</i> but still makes calculation and step-tracking mistakes in long problems.</li>
   </ul>
 
@@ -137,7 +139,8 @@ figcaption { font-size: 8.5pt; color: var(--ink-2); margin-top: 3pt; }
     <li>Step 4: Results, explained</li>
     <li>Step 5: Error analysis</li>
     <li>Step 6: Adding Deep Learning</li>
-    <li>Step 7: The chat app, demo and paper</li>
+    <li>Step 7: Making explanations better (FT-D, FT-E)</li>
+    <li>Step 8: The chat app, demo and paper</li>
     <li>How to run everything · Viva questions · Glossary</li>
   </ol>
 </section>
@@ -409,17 +412,43 @@ Parameters = (11·11·48 + 1) × 10 = 58,090.</div>
   <p>Gradient-descent and momentum problems got worse, and attention and backpropagation stayed at 0%. These need long chains of decimal arithmetic, which is exactly the weakness found in the error analysis.</p></div>
 </section>
 
-<!-- ============ STEP 7 ============ -->
+<!-- ============ STEP 7: EXPLANATIONS ============ -->
 <section>
-  <div class="kicker">Chapter 9</div>
-  <h2>Step 7: The chat app, practice demo and paper</h2>
+  <div class="kicker">Chapter 9 · Improvement</div>
+  <h2>Step 7: Making explanations better than the base model (FT-D, FT-E)</h2>
+  <p>The project goal is <b>accurate steps and better explanations than the base model</b>. Accuracy tests only check the final answer, so we built a second kind of test: a <b>blind judge</b>.</p>
+  <ol class="steps">
+    <li><b>The problem we found:</b> in the chat app, FT-C's answer to "What is CNN?" was shorter and less clear than the base model's. FT-C had learned from short training answers (median 57–91 words), so it wrote about 79 words where the base model writes about 286. Some answers also showed raw <code>$$</code> math symbols.</li>
+    <li><b>Fix 1, the app:</b> every formula is now shown as plain text (<code>z = Σ wᵢxᵢ + b</code>, <code>1.45 ≥ 0</code>, <code>O(n²)</code>), so students never see LaTeX code.</li>
+    <li><b>Fix 2, new teaching-style data:</b> about 1,340 questions (every concept question, plus "What is X?" and "Explain X with an example" for all 169 syllabus topics). Each answer follows one style: <i>direct answer → numbered key points → worked example → "In short" summary</i>. Questions similar to the test questions were removed.</li>
+    <li><b>FT-D</b> trained on these answers plus replay of the verified problems (so accuracy is kept). <b>FT-E</b> then trained on <b>fuller 250–350-word versions</b> with a worked numeric example and a "common mistake" line.</li>
+  </ol>
+  <div class="box simple"><div class="t">How the blind judge works</div>
+  <p>39 test questions (19 numericals with their verified solutions, and 20 concept questions such as "What is CNN?"). A separate AI model (Gemma 4 31B) sees two answers labelled only A and B and scores <b>correctness, steps and clarity</b> from 1 to 5. Every pair is judged <b>twice with A and B swapped</b>, and a model only wins a question if it wins both times. This removes the judge's bias toward whichever answer it reads first.</p></div>
+  <table>
+    <thead><tr><th>Model vs base model</th><th class="n">Numericals won–lost–tied</th><th class="n">Concepts won–lost–tied</th><th class="n">Answer length</th><th class="n">DL accuracy</th></tr></thead>
+    <tbody>
+      <tr><td>FT-C</td><td class="n up">14–4–1</td><td class="n">6–13–1</td><td class="n">79 words</td><td class="n">5%</td></tr>
+      <tr><td>FT-D</td><td class="n up">13–4–2</td><td class="n">8–12–0</td><td class="n">102 words</td><td class="n up">21%</td></tr>
+      <tr><td>FT-E</td><td class="n">13–5–1</td><td class="n">6–11–3</td><td class="n">194 words</td><td class="n">13%</td></tr>
+    </tbody>
+  </table>
+  <p><b>Result:</b> FT-E narrows the explanation gap on concept questions, but the base model is still slightly ahead (6–11–3, p = 0.332, not a significant difference); concept correctness 3.1 vs 3.3, steps 3.5 vs 4.0, clarity 3.8 vs 4.2 (out of 5). FT-E keeps the big win on numericals (13–5) and is the most accurate model on DBMS problems (35%).</p>
+  <div class="box honest"><div class="t">Honest note</div>
+  <p>The judge is an AI model, not a teacher, and 39 questions is a small test. It is still blind and order-balanced, which is the standard way such comparisons are done in research (an "LLM-as-a-judge" evaluation).</p></div>
+</section>
+
+<!-- ============ STEP 8 ============ -->
+<section>
+  <div class="kicker">Chapter 10</div>
+  <h2>Step 8: The chat app, practice demo and paper</h2>
   <div class="two">
     <div>
       <h3>Chat app (like ChatGPT/Claude)</h3>
       <ul>
         <li>Sidebar with past conversations, saved in your browser.</li>
-        <li>Model switch: <b>FT-C, FT-B, FT-A or the base model</b>, to show the difference live.</li>
-        <li>Answers appear word by word (streaming), with formatted math, tables and highlighted code, plus copy and stop buttons.</li>
+        <li>Model switch: <b>FT-E (default), FT-D, FT-C, FT-B, FT-A or the base model</b>, to show the difference live.</li>
+        <li>Answers appear word by word (streaming), with tables, highlighted code and math written as plain readable text (no LaTeX symbols), plus copy and stop buttons.</li>
         <li>Runs fully on the laptop. Each answer takes about 20–45 seconds.</li>
       </ul>
       <p><b>How it works:</b> a Python server (FastAPI) loads the base model once and attaches all three LoRA adapters by name. Switching models just switches the adapter, with no reloading.</p>
@@ -460,13 +489,14 @@ Parameters = (11·11·48 + 1) × 10 = 58,090.</div>
       <tr><td>Week 3</td><td>Trained FT-B and FT-A, evaluated on 7 tests with statistics</td></tr>
       <tr><td>Week 4</td><td>Error analysis, figures, Gradio demo, final report</td></tr>
       <tr><td>Extension</td><td>DL generators, FT-C, chat app, research paper</td></tr>
+      <tr><td>Improvement</td><td>Blind explanation judge, plain-text math in the app, teaching-style data, FT-D and FT-E</td></tr>
     </tbody>
   </table>
 </section>
 
 <!-- ============ VIVA ============ -->
 <section>
-  <div class="kicker">Chapter 10</div>
+  <div class="kicker">Chapter 11</div>
   <h2>Likely review questions, with simple answers</h2>
   <dl class="qa">
     <dt>1. Why a small model instead of GPT-4?</dt>
@@ -491,14 +521,18 @@ Parameters = (11·11·48 + 1) × 10 = 58,090.</div>
     <dd>Train more epochs; give the model a calculator (tool use); write solutions that re-check each step; preference training (DPO) using correct/incorrect pairs from the generators; a step-matched ablation; and run MMLU for general knowledge.</dd>
     <dt>11. Where did Gemini help, and how did you stop its mistakes?</dt>
     <dd>Concept Q&amp;A, GATE explanations and textbook Q&amp;A. We only kept answers that matched official keys or could be answered from the textbook passage, and we never used Gemini for the numerical answers.</dd>
-    <dt>12. What were the hardest engineering issues?</dt>
+    <dt>12. Does your model explain better than the base model, or only answer better?</dt>
+    <dd>Both, measured separately. On numerical problems the fine-tuned model is clearly better (wins 13–5 in a blind comparison, and significantly higher accuracy on DL, DBMS, CN and SQL). On open concept questions the first fine-tuned model explained worse, because it was trained on short answers; after retraining on fuller teaching-style answers (FT-E) the steps score rose from 2.7 to 3.6 (base 4.0), but the base model still wins slightly more concept questions (6–11–3, not significant). Honest answer: better at solving, not yet better at open-ended explaining.</dd>
+    <dt>13. How did you measure explanation quality fairly?</dt>
+    <dd>A blind judge: an AI model compares two answers without knowing which model wrote them, scores correctness, steps and clarity, and every pair is judged twice with the order swapped. Numericals include the verified solution so the judge can check correctness.</dd>
+    <dt>14. What were the hardest engineering issues?</dt>
     <dd>Intel GPU limits (no 4-bit, memory), slow generation (fixed with batching), and the laptop sleeping during multi-hour training (fixed with checkpoints and resume).</dd>
   </dl>
 </section>
 
 <!-- ============ GLOSSARY ============ -->
 <section>
-  <div class="kicker">Chapter 11</div>
+  <div class="kicker">Chapter 12</div>
   <h2>Glossary</h2>
   <table>
     <tbody>

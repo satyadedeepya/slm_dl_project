@@ -9,7 +9,7 @@ A LoRA fine-tune of Qwen2.5-1.5B-Instruct for CSE education (DSA, Programming, D
 ## Quick start
 
 ```bash
-python demo/server.py          # chat interface: conversations, model switch (FT-C / FT-B / FT-A / base), streaming, math and code
+python demo/server.py          # chat interface: conversations, model switch (FT-E / FT-D / FT-C / FT-B / FT-A / base), streaming, plain-text math, code
 python demo/app.py             # Gradio: verified practice problems graded automatically
 paper/build_pdf.cmd            # rebuild the paper PDF with headless Edge (Windows)
 ```
@@ -27,6 +27,7 @@ The chat server needs the trained adapters in `outputs/<run>/adapter` (not in gi
 | 3 | LoRA training (FT-A ablation, FT-B full mix) + evaluation | ✅ done. FT-B vs base: Spider 50.5 → 60.0, DBMS FD 15 → 30, CN numericals 1 → 8 (all p < 0.05). The FT-A ablation ties these gains to the verified generator data. See [Week 3 report](docs/week3_report.md) |
 | 4 | Error analysis, figures, demo, final report | ✅ done. 50 labelled errors (52% procedure / state tracking), Gradio demo (`demo/app.py`). See [Week 4 report](docs/week4_report.md) and the **[final report](docs/FINAL_REPORT.md)** |
 
+| + | Explanation quality (FT-D, FT-E): blind pairwise judge vs the base model, teaching-style data, plain-text math in the chat app | ✅ done. See the [explanation stage report](docs/explanation_stage_report.md) |
 | + | Deep Learning stage (FT-C), chat interface, research paper | ✅ done. Verified DL generators (10 problem types, checked against PyTorch) + DL concept Q&A, continued training from FT-B. See the [DL stage report](docs/dl_stage_report.md) |
 
 ## Layout

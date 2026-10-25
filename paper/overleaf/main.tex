@@ -22,7 +22,7 @@
 \maketitle
 
 \begin{abstract}
-Small language models can run on a student's laptop, but they are unreliable on the numerical problems that dominate computer-science examinations. We fine-tune Qwen2.5-1.5B-Instruct with LoRA as a tutor for six subjects (data structures and algorithms, programming, databases, operating systems, computer networks and deep learning) using a mixed instruction set whose distinctive component is \emph{programmatically verified} data: 3,000 problems whose step-by-step solutions and answers are computed by executing the underlying algorithm. All training and evaluation runs on an integrated Intel Arc GPU. On held-out test sets, fine-tuning significantly improves text-to-SQL execution accuracy (50.5\ra 60.0), functional-dependency problems (15\ra 30) and network numericals (1\ra 8) over the base model (exact McNemar $p<0.05$), without loss on code generation. An ablation that removes only the verified data eliminates these numerical gains. A continued-training stage adds deep learning, which raises value-level accuracy on held-out deep-learning numericals from 15.8\% to 26.0\% (paired permutation $p=0.013$) while every earlier gain is retained. Error analysis shows that the remaining failures are mostly procedural: the model reproduces the solution template but executes multi-step algorithms unreliably.
+Small language models can run on a student's laptop, but they are unreliable on the numerical problems that dominate computer-science examinations. We fine-tune Qwen2.5-1.5B-Instruct with LoRA as a tutor for six subjects (data structures and algorithms, programming, databases, operating systems, computer networks and deep learning) using a mixed instruction set whose distinctive component is \emph{programmatically verified} data: 3,000 problems whose step-by-step solutions and answers are computed by executing the underlying algorithm. All training and evaluation runs on an integrated Intel Arc GPU. On held-out test sets, fine-tuning significantly improves text-to-SQL execution accuracy (50.5\ra 60.0), functional-dependency problems (15\ra 30) and network numericals (1\ra 8) over the base model (exact McNemar $p<0.05$), without loss on code generation. An ablation that removes only the verified data eliminates these numerical gains. A continued-training stage adds deep learning, which raises value-level accuracy on held-out deep-learning numericals from 15.8\% to 26.0\% (paired permutation $p=0.013$) while every earlier gain is retained. Two further stages train on teaching-style answers; judged blind against the base model on 39 held-out questions, the final model wins the numerical problems 13--5 (p = 0.096) while the base model still explains open concept questions slightly better (6--11--3, not significant). Error analysis shows that the remaining failures are mostly procedural: the model reproduces the solution template but executes multi-step algorithms unreliably.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -37,8 +37,9 @@ The common recipe for adapting a small model is to fine-tune on question--answer
 \item \textbf{RQ1:} how much does LoRA fine-tuning improve a 1.5B model on CS tasks compared with zero- and few-shot prompting?
 \item \textbf{RQ2:} does the verified numerical data cause the improvement on numerical problems, or does the rest of the mix?
 \item \textbf{RQ3:} can a new subject (deep learning) be added cheaply by continued training without forgetting earlier skills?
+\item \textbf{RQ4:} does the fine-tuned tutor \emph{explain} better than the base model, not only answer more accurately?
 \end{itemize}
-Our contributions are (1) verified generators for 41 problem types across operating systems, networks, databases and deep learning, with tests against textbook examples and PyTorch; (2) a controlled ablation isolating the effect of verified data; (3) a statistically careful evaluation (bootstrap confidence intervals, exact McNemar tests, separated format failures) on seven held-out benchmarks; (4) an error taxonomy of the fine-tuned model; and (5) a local chat interface. The whole pipeline runs on a laptop with an integrated GPU.
+Our contributions are (1) verified generators for 41 problem types across operating systems, networks, databases and deep learning, with tests against textbook examples and PyTorch; (2) a controlled ablation isolating the effect of verified data; (3) a statistically careful evaluation (bootstrap confidence intervals, exact McNemar tests, separated format failures) on seven held-out benchmarks; (4) an error taxonomy of the fine-tuned model; (5) an explanation-style training stage judged blind against the base model; and (6) a local chat interface. The whole pipeline runs on a laptop with an integrated GPU.
 
 \section{Related Work}
 \emph{Parameter-efficient fine-tuning.} LoRA~\cite{lora} trains low-rank updates of frozen weights; QLoRA~\cite{qlora} adds 4-bit quantisation of the base model. We use LoRA on all attention and MLP projections of Qwen2.5-1.5B-Instruct~\cite{qwen25,qwencoder}.
@@ -161,6 +162,27 @@ FT-C & \textbf{5.0} & \textbf{26.0} [19.8--32.2] & \textbf{0.013} \\
 \label{fig:loss}
 \end{figure*}
 
+\subsection{RQ4: explanation quality}
+Final-answer accuracy does not measure explanations, and in the chat interface FT-C's concept answers were visibly shorter than the base model's. We therefore compare explanations directly on 39 held-out questions (19 verified numericals, one per problem type, with reference solutions, and 20 concept questions such as ``What is CNN?''). A fixed judge model (Gemma~4 31B) sees two answers with the model names hidden and scores correctness, steps and clarity (1--5); every pair is judged twice with the order swapped, and a model wins a question only if it wins in both orders. FT-C wins the numericals (14--4, sign test $p=0.031$) but loses the concept questions 6--13: its training targets were short (median 57--91 words for teacher answers), so it answers in 79 words where the base model uses 286. Two further continued-training stages address this. FT-D trains on 1,192 teacher answers written in a fixed teaching style (direct answer, numbered key points, a worked example, a one-line summary; plain-text math, no \LaTeX) with replay of verified problems; FT-E continues on fuller 250--350-word versions of the same answers (Table~\ref{tab:explain}).
+
+\begin{table*}[t]
+\centering
+\caption{Blind pairwise comparison against the base model (win--loss--tie) and accuracy (\%)}
+\label{tab:explain}
+\begin{tabular}{@{}l c c r r r r r r@{}}
+\toprule
+Model & Numericals & Concepts & Words & DL & DBMS & CN & Spider & MBPP \\
+\midrule
+B0 base & -- & -- & 286 & 2 & 15 & 1 & 50.5 & 41.5 \\
+FT-C & \textbf{14--4--1} & 6--13--1 & 79 & 5 & 31 & 7 & 59.5 & 40.0 \\
+FT-D & \textbf{13--4--2} & 8--12--0 & 102 & 21 & 24 & 12 & 58.5 & 39.5 \\
+FT-E & \textbf{13--5--1} & 6--11--3 & 194 & 13 & 35 & 11 & 59.0 & 40.0 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+FT-D keeps the numerical advantage and closes part of the explanation gap (concept steps 3.2 vs 2.7 for FT-C, clarity 3.9 vs 3.4), and its accuracy on deep-learning numericals rises from 5\% to 21\% (McNemar $p<0.001$ against FT-C), with no significant change on the other tasks. With fuller targets (median answer 194 words instead of 102), FT-E narrows the explanation gap on concept questions, but the base model is still slightly ahead (6--11--3, p = 0.332, not a significant difference): concept correctness 3.1 vs 3.3, steps 3.5 vs 4.0, clarity 3.8 vs 4.2 (out of 5). It still wins the numericals 13--5 (p = 0.096), and it is the most accurate model on DBMS (35\%, McNemar p = 0.001 vs the base model) while staying significantly ahead of the base model on DL (13\%), CN (11\%) and Spider (59.0\%), with code generation unchanged. Compared with FT-D it trades some DL accuracy (21 $\rightarrow$ 13) for DBMS (24 $\rightarrow$ 35).
+
 \section{Error Analysis}\label{sec:errors}
 We hand-labelled a stratified random sample of 50 wrong FT-B answers (12 CS-Bench, 8 each OS/CN/DBMS, 7 MBPP, 7 Spider) with one primary cause each (Table~\ref{tab:err}). None was a format failure.
 
@@ -186,7 +208,7 @@ Ambiguous item & 2\% & -- \\
 Procedure errors account for 20 of the 24 numerical failures and fall into three patterns: \emph{early stopping in fixed-point loops} (attribute closure applies one dependency and declares that nothing else applies), \emph{unfaithful reading of the input} (claiming an attribute never appears on a right-hand side when it does; ordering FCFS by process number instead of arrival) and \emph{inconsistent state} (LRU tables wider than the frame count; negative waiting times that are never checked). Arithmetic slips are a minority and are mostly powers of ten. Spider failures are grounding errors against a schema that is in the prompt. These patterns suggest concrete remedies: traces that restate the complete state at each step with built-in self-checks, tool use for arithmetic, and execution feedback for SQL.
 
 \section{System}
-The tutor is served by a small FastAPI application that loads the base model once and attaches the FT-A, FT-B and FT-C adapters as named LoRA adapters, so the chat interface can switch between them, or disable them to show the base model, without reloading weights. Answers stream token by token with server-sent events; the browser interface renders Markdown, tables and highlighted code and keeps conversations locally. A second Gradio interface generates a fresh verified problem, lets the model solve it and grades the answer automatically. On the integrated GPU a typical answer streams in 20--30\,s.
+The tutor is served by a small FastAPI application that loads the base model once and attaches the FT-A to FT-E adapters as named LoRA adapters, so the chat interface can switch between them, or disable them to show the base model, without reloading weights. Answers stream token by token with server-sent events; the browser interface renders Markdown, tables and highlighted code, writes any \LaTeX{} the model produces as plain readable text (e.g.\ ``z = $\Sigma$ w$_i$x$_i$ + b''), and keeps conversations locally. A second Gradio interface generates a fresh verified problem, lets the model solve it and grades the answer automatically. On the integrated GPU a typical answer streams in 20--30\,s.
 
 \section{Limitations}
 \begin{itemize}
@@ -194,11 +216,12 @@ The tutor is served by a small FastAPI application that loads the base model onc
 \item FT-B trains for more steps than FT-A, which partly confounds the ablation.
 \item The GATE test has only 56 items ($\pm$12-point intervals); MMLU was not evaluated.
 \item Error labels come from a single annotator on a quota-stratified sample.
+\item Explanation quality is judged by one LLM judge on 39 questions; a human rating would strengthen it.
 \item FT-C was evaluated on five of the eight tasks (DL, DBMS, CN, Spider, MBPP) to save time; CS-Bench, OS and GATE were not re-run.
 \end{itemize}
 
 \section{Conclusion}
-Verified, programmatically generated training data teaches a 1.5B model procedures that neither prompting nor LLM-written data teach: functional-dependency closure and keys, subnetting and CRC; a short continued-training stage with verified problems and replay adds measurable deep-learning skill (value-level 15.8\ra 26.0\%) without forgetting. The gains are specific and do not cost code-generation ability. The main limitation is execution of long procedures, which the model imitates rather than performs. Future work: more epochs and self-checking traces, tool use for arithmetic and simulation, preference tuning on verified correct/incorrect pairs, and a step-matched ablation.
+Verified, programmatically generated training data teaches a 1.5B model procedures that neither prompting nor LLM-written data teach: functional-dependency closure and keys, subnetting and CRC; a short continued-training stage with verified problems and replay adds measurable deep-learning skill (value-level 15.8\ra 26.0\%) without forgetting. The gains are specific and do not cost code-generation ability. Training on fuller teaching-style answers narrows, but does not close, the gap to the base model's explanations of open concept questions while keeping the accuracy advantage. The main limitation is execution of long procedures, which the model imitates rather than performs. Future work: more epochs and self-checking traces, tool use for arithmetic and simulation, preference tuning on verified correct/incorrect pairs, and a step-matched ablation.
 
 \begin{thebibliography}{15}
 \bibitem{lora} E.~J. Hu \emph{et al.}, ``LoRA: Low-rank adaptation of large language models,'' arXiv:2106.09685, 2021.

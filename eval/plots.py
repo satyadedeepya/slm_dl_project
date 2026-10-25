@@ -25,7 +25,9 @@ RUNS = [("B0_zeroshot", "B0 base, zero-shot", "#2a78d6"),
         ("B1_3shot", "B1 base, 3-shot", "#eb6834"),
         ("FT-A", "FT-A (no generator data)", "#1baf7a"),
         ("FT-B", "FT-B (full mix)", "#eda100"),
-        ("FT-C", "FT-C (FT-B + DL stage)", "#e87ba4")]
+        ("FT-C", "FT-C (FT-B + DL stage)", "#e87ba4"),
+        ("FT-D", "FT-D (FT-C + explanation stage)", "#7a5af8"),
+        ("FT-E", "FT-E (FT-D + fuller explanations)", "#0f766e")]
 TASKS = [("csbench", "CS-Bench"), ("gen_os", "OS numericals"), ("gen_cn", "CN numericals"),
          ("gen_dbms", "DBMS FD problems"), ("gen_dl", "DL numericals"), ("mbpp", "MBPP"), ("spider", "Spider"), ("gate", "GATE 2021–26")]
 SURFACE, INK, INK_2, GRID = "#fcfcfb", "#0b0b0b", "#52514e", "#e4e3df"
@@ -60,12 +62,12 @@ def accuracy():
             ax.errorbar(x, acc, yerr=[[acc - lo], [hi - acc]], fmt="none", ecolor=INK_2, elinewidth=0.8,
                         capsize=0, zorder=3)
             ax.text(x, hi + 1.2, f"{acc:.0f}", ha="center", va="bottom", fontsize=7, color=INK_2)
-    ax.set_xticks(range(len(TASKS)), [t for _, t in TASKS], color=INK)
+    ax.set_xticks(range(len(TASKS)), [t.replace(" ", "\n", 1) for _, t in TASKS], color=INK)
     ax.set_ylabel("Accuracy (%)", color=INK_2)
-    ax.set_ylim(0, 80)
+    ax.set_ylim(0, 90)
     ax.set_title("Accuracy per task, with 95% bootstrap CIs (missing bars: run not evaluated on that task)",
                  loc="left", color=INK, fontsize=11)
-    ax.legend(frameon=False, ncol=len(runs), loc="upper left", bbox_to_anchor=(0, 1.0), labelcolor=INK, fontsize=8.5)
+    ax.legend(frameon=False, ncol=min(4, len(runs)), loc="upper left", bbox_to_anchor=(0, 1.0), labelcolor=INK, fontsize=8.5)
     fig.tight_layout()
     fig.savefig(FIGURES / "accuracy.png", dpi=160)
 

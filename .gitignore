@@ -14,3 +14,4 @@ eval/results/*/gate.jsonl
 .claude/settings.local.json
 data/concepts/explain_cache/
 data/concepts/*.log
+data/concepts/explain_cache_v2/

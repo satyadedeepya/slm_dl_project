@@ -1,0 +1,126 @@
+{
+  "meta": {
+    "model": "Qwen/Qwen2.5-1.5B-Instruct",
+    "adapter": "outputs\\ft-e\\adapter",
+    "fewshot": 0
+  },
+  "results": {
+    "gen_dl": {
+      "n": 100,
+      "acc": 0.13,
+      "ci95": [
+        0.07,
+        0.2
+      ],
+      "by_group": {
+        "attention": {
+          "n": 6,
+          "acc": 0.0
+        },
+        "backprop": {
+          "n": 13,
+          "acc": 0.0
+        },
+        "cnn": {
+          "n": 22,
+          "acc": 0.2727272727272727
+        },
+        "forward": {
+          "n": 14,
+          "acc": 0.0
+        },
+        "loss": {
+          "n": 8,
+          "acc": 0.0
+        },
+        "metrics": {
+          "n": 9,
+          "acc": 0.0
+        },
+        "mlp": {
+          "n": 11,
+          "acc": 0.6363636363636364
+        },
+        "optim": {
+          "n": 17,
+          "acc": 0.0
+        }
+      },
+      "seconds": 310.6
+    },
+    "gen_dbms": {
+      "n": 100,
+      "acc": 0.35,
+      "ci95": [
+        0.26,
+        0.45
+      ],
+      "by_group": {
+        "decomposition": {
+          "n": 16,
+          "acc": 0.375
+        },
+        "fd": {
+          "n": 61,
+          "acc": 0.3770491803278688
+        },
+        "normalization": {
+          "n": 23,
+          "acc": 0.2608695652173913
+        }
+      },
+      "seconds": 473.3
+    },
+    "gen_cn": {
+      "n": 100,
+      "acc": 0.11,
+      "ci95": [
+        0.05,
+        0.17
+      ],
+      "by_group": {
+        "checksum": {
+          "n": 10,
+          "acc": 0.0
+        },
+        "crc": {
+          "n": 26,
+          "acc": 0.0
+        },
+        "delay": {
+          "n": 14,
+          "acc": 0.21428571428571427
+        },
+        "flow_control": {
+          "n": 17,
+          "acc": 0.17647058823529413
+        },
+        "subnetting": {
+          "n": 33,
+          "acc": 0.15151515151515152
+        }
+      },
+      "seconds": 405.9
+    },
+    "spider": {
+      "n": 200,
+      "acc": 0.59,
+      "ci95": [
+        0.525,
+        0.66
+      ],
+      "by_group": {},
+      "seconds": 449.9
+    },
+    "mbpp": {
+      "n": 200,
+      "acc": 0.4,
+      "ci95": [
+        0.335,
+        0.47
+      ],
+      "by_group": {},
+      "seconds": 458.7
+    }
+  }
+}

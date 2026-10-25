@@ -1,0 +1,76 @@
+{
+  "a": "base",
+  "b": "ft-e",
+  "n": 39,
+  "groups": {
+    "all": {
+      "n": 39,
+      "ft-e_wins": 19,
+      "base_wins": 16,
+      "ties": 4,
+      "p_sign": 0.7359,
+      "mean_scores": {
+        "base": {
+          "correctness": 2.45,
+          "steps": 3.03,
+          "clarity": 3.5
+        },
+        "ft-e": {
+          "correctness": 2.45,
+          "steps": 3.22,
+          "clarity": 3.69
+        }
+      }
+    },
+    "numerical": {
+      "n": 19,
+      "ft-e_wins": 13,
+      "base_wins": 5,
+      "ties": 1,
+      "p_sign": 0.0963,
+      "mean_scores": {
+        "base": {
+          "correctness": 1.58,
+          "steps": 2.0,
+          "clarity": 2.79
+        },
+        "ft-e": {
+          "correctness": 1.74,
+          "steps": 2.87,
+          "clarity": 3.61
+        }
+      }
+    },
+    "concept": {
+      "n": 20,
+      "ft-e_wins": 6,
+      "base_wins": 11,
+      "ties": 3,
+      "p_sign": 0.3323,
+      "mean_scores": {
+        "base": {
+          "correctness": 3.27,
+          "steps": 4.0,
+          "clarity": 4.17
+        },
+        "ft-e": {
+          "correctness": 3.12,
+          "steps": 3.55,
+          "clarity": 3.77
+        }
+      }
+    }
+  },
+  "base": {
+    "numerical_correct": 2,
+    "numerical_n": 19,
+    "median_words": 286,
+    "answers_with_latex": 9
+  },
+  "ft-e": {
+    "numerical_correct": 3,
+    "numerical_n": 19,
+    "median_words": 194,
+    "answers_with_latex": 1
+  }
+}

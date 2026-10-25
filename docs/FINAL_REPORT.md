@@ -156,6 +156,28 @@ FT-C continues FT-B's adapter on a 2,107-example DL stage: 600 verified DL probl
 - **Exact match stays low** because of multi-digit arithmetic slips.
 - **Nothing learned earlier is lost.** CS-Bench, OS and GATE were not re-run, to save time.
 
+### 5.4 Explanation quality (FT-D, FT-E; details in [explanation_stage_report.md](explanation_stage_report.md))
+
+The goal is accurate steps **and** better explanations than the base model. Final-answer accuracy does not measure explanations, so we added a **blind pairwise judge**:
+- 39 held-out questions: 19 verified numericals with reference solutions, and 20 concept questions such as "What is CNN?".
+- A fixed judge model (Gemma 4 31B) sees two answers without the model names and scores correctness, steps and clarity.
+- Every pair is judged twice with the order swapped, and a model wins a question only if it wins both times.
+
+| Model vs base | Numericals (win–loss–tie) | Concepts (win–loss–tie) | Median words | DL exact | DBMS | CN | Spider | MBPP |
+|---|---|---|---|---|---|---|---|---|
+| B0 base | – | – | 286 | 2 | 15 | 1 | 50.5 | 41.5 |
+| FT-C | **14–4–1** (p = 0.031) | 6–13–1 | 79 | 5 | 31 | 7 | 59.5 | 40.0 |
+| FT-D | **13–4–2** (p = 0.049) | 8–12–0 | 102 | **21** | 24 | 12 | 58.5 | 39.5 |
+| FT-E | **13–5–1** (p = 0.096) | 6–11–3 (p = 0.332) | 194 | 13 | 35 | 11 | 59.0 | 40.0 |
+
+**What each stage did:**
+- **FT-C:** short training answers (median 57–91 words) made it explain less than the base model.
+- **FT-D:** trained on 1,192 teaching-style answers (direct answer, numbered key points, a worked example, an "In short" line, plain-text math) with replay of the verified problems.
+  - It kept the numerical win.
+  - It narrowed the explanation gap.
+  - DL accuracy rose from 5% to 21% (p < 0.001).
+- **FT-E:** trained on fuller 250–350-word versions of the same answers. With fuller targets (median answer 194 words instead of 102), FT-E narrows the explanation gap on concept questions, but the base model is still slightly ahead (6–11–3, p = 0.332, not a significant difference): concept correctness 3.1 vs 3.3, steps 3.5 vs 4.0, clarity 3.8 vs 4.2 (out of 5). It still wins the numericals 13–5 (p = 0.096), and it is the most accurate model on DBMS (35%, McNemar p = 0.001 vs the base model) while staying significantly ahead of the base model on DL (13%), CN (11%) and Spider (59.0%), with code generation unchanged. Compared with FT-D it trades some DL accuracy (21 → 13) for DBMS (24 → 35).
+
 ## 6. Error analysis (Week 4; details in [week4_report.md](week4_report.md))
 
 We hand-labelled 50 stratified FT-B errors, with GATE excluded.
@@ -175,9 +197,10 @@ No sampled error was a format failure: the model fully learned the answer format
 ## 7. Demo and chat interface
 
 **Chat interface.** `python demo/server.py`, then open http://127.0.0.1:8000:
-- A FastAPI server loads the base model once and attaches FT-C, FT-B and FT-A as named LoRA adapters.
+- A FastAPI server loads the base model once and attaches FT-E, FT-D, FT-C, FT-B and FT-A as named LoRA adapters.
 - The browser interface has a conversation sidebar (stored in the browser) and a model switch, including the base model.
-- Answers stream as they are generated, with Markdown, LaTeX math, tables and highlighted code.
+- Answers stream as they are generated, with Markdown, tables and highlighted code.
+- Any LaTeX the model writes is shown as plain readable text, e.g. `z = Σ wᵢxᵢ + b` (`demo/static/plainmath.js`).
 
 **Gradio practice demo.** `python demo/app.py` starts a Gradio app with two tabs:
 - a streaming chat;

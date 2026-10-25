@@ -44,17 +44,17 @@ Fine-tuning on short answers taught the model to answer briefly. It overwrote th
 |---|---|---|---|---|---|
 | FT-C | 14–4–1 (**0.031**) | 6–13–1 (0.17) | 2.65 / 4.15 | 3.40 / 4.33 | 79 |
 | FT-D | 13–4–2 (**0.049**) | 8–12–0 (0.50) | 3.17 / 3.95 | 3.85 / 4.28 | 102 |
-| FT-E | FTE_NUM | FTE_CON | FTE_STEPS | FTE_CLAR | FTE_WORDS |
+| FT-E | **13–5–1** (p = 0.096) | 6–11–3 (p = 0.332) | 3.55 / 4.00 | 3.77 / 4.17 | 194 |
 
 ### Accuracy (exact match, %) on held-out tests
 
 | Task | B0 base | FT-C | FT-D | FT-E |
 |---|---|---|---|---|
-| DL numericals (100) | 2 | 5 | **21** | FTE_DL |
-| DBMS FD problems (100) | 15 | 31 | 24 | FTE_DBMS |
-| CN numericals (100) | 1 | 7 | 12 | FTE_CN |
-| Spider SQL (200) | 50.5 | 59.5 | 58.5 | FTE_SPIDER |
-| MBPP pass@1 (200) | 41.5 | 40.0 | 39.5 | FTE_MBPP |
+| DL numericals (100) | 2 | 5 | **21** | 13 |
+| DBMS FD problems (100) | 15 | 31 | 24 | 35 |
+| CN numericals (100) | 1 | 7 | 12 | 11 |
+| Spider SQL (200) | 50.5 | 59.5 | 58.5 | 59.0 |
+| MBPP pass@1 (200) | 41.5 | 40.0 | 39.5 | 40.0 |
 
 **FT-D vs FT-C (exact McNemar):**
 - DL: 5 → 21, p < 0.001.
@@ -68,4 +68,7 @@ Fine-tuning on short answers taught the model to answer briefly. It overwrote th
 
 ## 5. Analysis
 
-FTE_ANALYSIS
+1. **Accuracy:** every fine-tuned stage keeps a clear lead over the base model on numerical problems. FT-E wins the numericals 13–5 in the blind comparison, and its exact-match accuracy is significantly higher than the base model's on DL, DBMS, CN and Spider.
+2. **Explanations:** answer length was the main cause of the explanation gap. Training targets grew from about 70 to 286 words, and the model's answers grew from 79 (FT-C) to 102 (FT-D) to 194 (FT-E) words. Concept results against the base model went from 6–13 (FT-C) to 8–12 (FT-D) to 6–11–3 (FT-E): concept correctness 3.1 vs 3.3, steps 3.5 vs 4.0, clarity 3.8 vs 4.2 (out of 5).
+3. **Verdict:** FT-E narrows the explanation gap on concept questions, but the base model is still slightly ahead (6–11–3, p = 0.332, not a significant difference). Beating the base model clearly on open-ended explanations would need more or better teaching data, a second epoch, or preference tuning (DPO) with base-vs-tutor pairs.
+4. **No LaTeX:** the chat app shows all math as plain text, whatever the model writes.
