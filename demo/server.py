@@ -20,6 +20,7 @@ import torch
 import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from peft import PeftModel
 from pydantic import BaseModel
 from transformers import (AutoModelForCausalLM, AutoTokenizer, StoppingCriteria, StoppingCriteriaList,
@@ -114,6 +115,7 @@ class ChatRequest(BaseModel):
 
 def build_app(engine: Engine) -> FastAPI:
     app = FastAPI(title="CSE-Tutor")
+    app.mount("/vendor", StaticFiles(directory=STATIC / "vendor"), name="vendor")  # Markdown/KaTeX, works offline
 
     @app.get("/")
     def index():
