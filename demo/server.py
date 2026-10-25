@@ -115,7 +115,8 @@ class ChatRequest(BaseModel):
 
 def build_app(engine: Engine) -> FastAPI:
     app = FastAPI(title="CSE-Tutor")
-    app.mount("/vendor", StaticFiles(directory=STATIC / "vendor"), name="vendor")  # Markdown/KaTeX, works offline
+    app.mount("/vendor", StaticFiles(directory=STATIC / "vendor"), name="vendor")  # Markdown libraries, works offline
+    app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
     @app.get("/")
     def index():

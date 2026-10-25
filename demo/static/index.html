@@ -6,13 +6,11 @@
 <title>CSE-Tutor</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<!-- Libraries are served from demo/static/vendor so formatting works without internet. -->
+<!-- Libraries are served from demo/static/vendor so formatting works without internet; math is shown as plain text. -->
 <script src="/vendor/marked.min.js"></script>
 <script src="/vendor/highlight.min.js"></script>
 <script src="/vendor/purify.min.js"></script>
-<link rel="stylesheet" href="/vendor/katex/katex.min.css">
-<script src="/vendor/katex/katex.min.js"></script>
-<script src="/vendor/katex/contrib/auto-render.min.js"></script>
+<script src="/static/plainmath.js"></script>
 <style>
 /* Layout: a quiet sidebar of conversations on the left; one reading column (about 46rem) for the chat,
    with the composer pinned to the bottom. Accent = blackboard green, the colour of a CS lecture hall. */
@@ -105,7 +103,7 @@ header .spacer { flex: 1; }
 .msg.bot .body pre { position: relative; background: var(--code-bg); border: 1px solid var(--line); border-radius: 9px; padding: 12px 14px;
   overflow-x: auto; }
 .msg.bot .body pre code { background: none; padding: 0; font-size: 0.85rem; }
-.msg.bot .body .katex-display { overflow-x: auto; overflow-y: hidden; padding: 2px 0; }
+.msg.bot .body .math-line { display: block; margin: 0.3em 0 0.7em; padding-left: 1.2em; overflow-x: auto; }
 .copy { position: absolute; top: 6px; right: 6px; font: 0.72rem var(--font-body); background: var(--surface); border: 1px solid var(--line);
   border-radius: 6px; padding: 2px 8px; cursor: pointer; color: var(--ink-2); }
 .meta { margin-top: 6px; font: 0.72rem var(--font-mono); color: var(--ink-3); display: flex; gap: 12px; }
@@ -207,18 +205,17 @@ let current = null;   // the open chat object
 let models = [];
 let busy = false;
 
-const MATH = /\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|\\\(([\s\S]+?)\\\)|\$([^\s$](?:[^$\n]*?[^\s$])?)\$/g;
 function md(text) {
-  if (!window.marked) { const d = document.createElement("div"); d.textContent = text; return d.innerHTML.replace(/\n/g, "<br>"); }
-  // Pull math out before Markdown so "_" and "\" inside formulas are not treated as Markdown, then render it with KaTeX.
+  const esc = (t) => { const d = document.createElement("div"); d.textContent = t; return d.innerHTML; };
+  if (!window.marked) return esc(window.plainMath ? plainMath(text) : text).replace(/\n/g, "<br>");
+  // Pull math out before Markdown so "_" and "\" inside formulas are not treated as Markdown, and write it as
+  // plain text (no LaTeX symbols): "$$ z = \sum_i w_i x_i $$" becomes "z = Σᵢ wᵢxᵢ".
   const math = [];
-  const src = window.katex ? text.replace(MATH, (m, d1, d2, i1, i2) => {
-    const display = d1 != null || d2 != null;
-    try { math.push(katex.renderToString(d1 ?? d2 ?? i1 ?? i2, { displayMode: display, throwOnError: false })); }
-    catch { math.push(m); }
-    return `@@MATH${math.length - 1}@@`;
+  const src = window.plainMath ? plainMath(text, (plain, display) => {
+    math.push(display ? `<span class="math-line">${esc(plain)}</span>` : esc(plain));
+    return display ? `\n\n@@MATH${math.length - 1}@@\n\n` : `@@MATH${math.length - 1}@@`;
   }) : text;
-  let html = marked.parse(src, { gfm: true, breaks: false });
+  let html = marked.parse(src, { gfm: true, breaks: true });
   html = window.DOMPurify ? DOMPurify.sanitize(html) : html;
   return html.replace(/@@MATH(\d+)@@/g, (_, i) => math[+i]);
 }
@@ -257,7 +254,7 @@ function botNode(m, streaming) {
     const meta = document.createElement("div"); meta.className = "meta";
     const t = document.createElement("span"); t.textContent = `${m.seconds}s`;
     const copy = document.createElement("button"); copy.type = "button"; copy.textContent = "Copy answer";
-    copy.onclick = async () => { try { await navigator.clipboard.writeText(m.content); copy.textContent = "Copied"; } catch { copy.textContent = "Copy failed"; } };
+    copy.onclick = async () => { try { await navigator.clipboard.writeText(window.plainMath ? plainMath(m.content) : m.content); copy.textContent = "Copied"; } catch { copy.textContent = "Copy failed"; } };
     meta.append(t, copy); wrap.appendChild(meta);
   }
   return wrap;
