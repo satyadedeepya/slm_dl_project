@@ -1,0 +1,24 @@
+{
+  "train": 1804,
+  "val": 100,
+  "explain": 1254,
+  "generator_replay": 450,
+  "code_replay": 100,
+  "train_by_source": {
+    "teacher-explain": 1254,
+    "codealpaca": 40,
+    "generator": 450,
+    "spider": 52,
+    "mbpp": 8
+  },
+  "train_by_subject": {
+    "DL": 423,
+    "OS": 286,
+    "DSA": 228,
+    "CN": 289,
+    "DBMS": 354,
+    "Programming": 224
+  },
+  "explain_median_words": 286,
+  "targets_with_latex": 0
+}
