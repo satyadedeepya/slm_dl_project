@@ -129,10 +129,12 @@ class Gemini:
             raise QuotaExhausted(f"{dropped}: {reason}; no models left")
         print(f"    {dropped}: {reason}; switching to {self.models[0]}", flush=True)
 
-    def generate_json(self, prompt: str, temperature: float):
+    def generate_json(self, prompt: str, temperature: float, thinking_budget: int | None = None):
         body = {"contents": [{"role": "user", "parts": [{"text": prompt}]}],
                 "generationConfig": {"temperature": temperature, "responseMimeType": "application/json",
                                      "maxOutputTokens": 32768}}
+        if thinking_budget is not None:  # 0 turns thinking off: much faster for writing tasks
+            body["generationConfig"]["thinkingConfig"] = {"thinkingBudget": thinking_budget}
         attempt = 0  # consecutive failures on the current model
         while True:
             if attempt >= 3:  # overloaded or producing broken JSON: move on rather than burn quota

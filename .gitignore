@@ -12,3 +12,5 @@ eval/results/baselines.done
 data/external/
 eval/results/*/gate.jsonl
 .claude/settings.local.json
+data/concepts/explain_cache/
+data/concepts/*.log
