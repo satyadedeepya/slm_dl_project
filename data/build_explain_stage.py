@@ -25,6 +25,7 @@ import json
 import random
 import re
 import sys
+import time
 from collections import Counter
 from pathlib import Path
 
@@ -185,13 +186,20 @@ def cmd_expand(args) -> None:
     answers, _ = cached(CACHE)
     done, _ = cached(EXPANDED)
     short = [k for k, a in answers.items() if k in qs and k not in done and len(a.split()) < args.min_words]
+    if args.reverse:  # a second process can work from the other end of the list
+        short.reverse()
     batches = [short[i:i + args.batch] for i in range(0, len(short), args.batch)]
     print(f"{len(short)} short answers to expand in {len(batches)} batches", flush=True)
 
     def work(worker: int) -> None:
         gem = Gemini(args.models, rpm=args.rpm, patience=8)
         for b in range(worker, len(batches), args.workers):
-            batch = batches[b]
+            if args.deadline and time.strftime("%H:%M") >= args.deadline:  # time box: keep what is done
+                return
+            finished, _ = cached(EXPANDED)  # skip answers another process has expanded meanwhile
+            batch = [k for k in batches[b] if k not in finished]
+            if not batch:
+                continue
             items = "\n".join(json.dumps({"id": k, "question": qs[k]["question"], "short_answer": answers[k]},
                                          ensure_ascii=False) for k in batch)
             out = gem.generate_json(EXPAND.format(items=items), temperature=0.4, thinking_budget=0)
@@ -288,6 +296,8 @@ def main():
     e.add_argument("--batch", type=int, default=5)
     e.add_argument("--rpm", type=float, default=4, help="per worker")
     e.add_argument("--workers", type=int, default=4)
+    e.add_argument("--reverse", action="store_true", help="work from the end of the list (second process)")
+    e.add_argument("--deadline", help="HH:MM; stop starting new batches after this time")
     e.add_argument("--models", nargs="+", default=["gemma-4-31b-it", "gemini-3.8-flash", "gemini-flash-latest"])
     m = sub.add_parser("mix")
     m.add_argument("--gen-per-subject", type=int, default=250)
