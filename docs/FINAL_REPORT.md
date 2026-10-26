@@ -2,11 +2,11 @@
 
 *One-month course project. Base model: Qwen2.5-1.5B-Instruct. Code, data card, results and weekly reports are in this repository.*
 
-The research paper version of this report is [paper/CSE-Tutor_paper.pdf](../paper/CSE-Tutor_paper.pdf).
+The research paper version of this report is [paper/CSE-Tutor_paper.pdf](../paper/CSE-Tutor_paper.pdf) (7 pages, IEEE style); the same paper in LaTeX for Overleaf is `paper/CSE-Tutor_overleaf.zip`.
 
 ## Abstract
 
-We fine-tune Qwen2.5-1.5B-Instruct with LoRA to act as a tutor for five core CSE subjects: DSA, Programming, DBMS, Operating Systems and Computer Networks.
+We fine-tune Qwen2.5-1.5B-Instruct with LoRA to act as a tutor for five core CSE subjects (DSA, Programming, DBMS, Operating Systems and Computer Networks), later extended with Deep Learning.
 
 **Data.** The training mix has 8,868 examples. Its distinctive part is **2,400 programmatically generated OS, CN and DBMS problems** whose answers are computed by running the actual algorithm, so every label is correct. The rest of the mix is:
 - GATE/ISRO past questions with key-verified explanations;
@@ -26,6 +26,15 @@ All three have p < 0.05 on exact McNemar tests. Coding (MBPP) and GATE are uncha
 
 **Ablation.** An identical run without the generated problems (FT-A) shows no gain on the numerical tasks, which ties those improvements to the verified data. Error analysis of 50 failures shows the main remaining weakness: the model reproduces a solution template but executes multi-step procedures unreliably (52% of the sampled errors).
 
+**Later stages.** Three continued-training stages build on FT-B:
+- **FT-C** adds Deep Learning without forgetting (§5.3).
+- **FT-D** and **FT-E** train on teaching-style answers (§5.4).
+
+A blind, order-balanced pairwise judge on 39 held-out questions shows:
+- **Numericals:** the final model, FT-E, wins 13–5 against the base model.
+- **Concept explanations:** FT-E narrows the gap but the base model is still slightly ahead (6–11–3, not significant). The first fine-tuned models had answered too briefly, because their training answers were short.
+- **Accuracy:** FT-E is significantly more accurate than the base model on DBMS (15 → 35), DL (2 → 13), CN (1 → 11) and Spider (50.5 → 59.0), with coding unchanged.
+
 ## 1. Problem and research questions
 
 Students preparing for university exams, GATE and placements need an assistant that explains concepts, solves numerical problems step by step, and writes correct code and SQL, and that runs locally at no cost. A 1.5B model fits on a laptop but often gets CS numericals wrong.
@@ -37,6 +46,7 @@ The usual student-project recipe is to fine-tune on LLM-written Q&A. That data i
 | **RQ1** | How much does fine-tuning improve a 1.5B model on CSE tasks compared with zero- and few-shot prompting? | §5.1 |
 | **RQ2** | Do verified, generated numerical problems improve exact-match accuracy on OS/CN/DBMS numericals? | §5.2 (ablation) |
 | **RQ3** | Is general ability lost? | §5.1, measured on MBPP and GATE; MMLU was not run (§8) |
+| **RQ4** | Does the tutor explain better than the base model, not only answer more accurately? | §5.4 (blind pairwise judge) |
 
 ## 2. Related work
 

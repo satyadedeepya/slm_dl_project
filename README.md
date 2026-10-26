@@ -2,7 +2,8 @@
 
 A LoRA fine-tune of Qwen2.5-1.5B-Instruct for CSE education (DSA, Programming, DBMS, OS, CN and Deep Learning), trained on a mix that includes 3,000 programmatically verified OS/CN/DBMS/DL problems.
 
-- **Research paper:** [paper/CSE-Tutor_paper.pdf](paper/CSE-Tutor_paper.pdf) (source: `paper/paper.html`)
+- **Research paper (7 pages):** [paper/CSE-Tutor_paper.pdf](paper/CSE-Tutor_paper.pdf) (source: `paper/paper.html`; Overleaf/LaTeX: `paper/CSE-Tutor_overleaf.zip`)
+- **Beginner-friendly review guide:** [docs/CSE-Tutor_Review_Guide.pdf](docs/CSE-Tutor_Review_Guide.pdf)
 - **Final report:** [docs/FINAL_REPORT.md](docs/FINAL_REPORT.md); original design: [PROJECT_PLAN.md](PROJECT_PLAN.md)
 - **Chat with the model:** `python demo/server.py`, then open http://127.0.0.1:8000
 
@@ -62,7 +63,7 @@ data/generators/dl_gen.py    DL generators: conv/pool shapes, parameter counts, 
 data/build_dl_stage.py       DL continued-training set (DL generators + DL concepts + replay)
 train/run_ftc.cmd            FT-C pipeline: DL stage training + evaluation
 demo/server.py               chat server (FastAPI, streaming, named LoRA adapters) + demo/static/index.html
-paper/                       research paper (HTML source, PDF, build script)
+paper/                       research paper (HTML source, PDF, build script, overleaf/ LaTeX version)
 demo/app.py                  Gradio demo: chat + verified practice problems, adapter on/off
 docs/week{1,2,3,4}_report.md weekly reports
 tests/                       textbook cases, property tests, grader tests (36)

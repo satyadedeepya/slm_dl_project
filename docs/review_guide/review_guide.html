@@ -14,7 +14,7 @@
   --serif: "Source Serif 4", Georgia, serif; --sans: "IBM Plex Sans", "Segoe UI", Arial, sans-serif; --mono: "IBM Plex Mono", Consolas, monospace;
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--paper); color: var(--ink); font: 9.9pt/1.48 var(--sans); }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 9.5pt/1.42 var(--sans); }
 h1, h2, h3 { font-family: var(--serif); line-height: 1.2; text-wrap: balance; }
 h2 { font-size: 17pt; margin: 0 0 8pt; color: var(--accent); break-after: avoid; }
 h3 { font-size: 12.5pt; margin: 14pt 0 5pt; break-after: avoid; }
@@ -84,14 +84,14 @@ figcaption { font-size: 8.5pt; color: var(--ink-2); margin-top: 3pt; }
   <div class="top">
     <div class="kicker">Project review guide · beginner friendly</div>
     <h1>CSE-Tutor 1.5B</h1>
-    <div class="sub">How we taught a small AI model to tutor six Computer Science subjects, step by step, with training data whose answers are checked by code.</div>
+    <div class="sub">How we taught a small AI model to tutor six Computer Science subjects, step by step, with training data whose answers are checked by code, and then trained it to explain like a teacher.</div>
     <div class="chips"><span class="chip">DSA</span><span class="chip">Programming</span><span class="chip">DBMS</span><span class="chip">Operating Systems</span><span class="chip">Computer Networks</span><span class="chip">Deep Learning</span></div>
   </div>
   <div>
     <div class="bignums">
       <div><b>9,335</b><span>examples in the main training mix (plus a 2,107-example DL stage)</span></div>
       <div><b>3,000</b><span>problems with code-verified answers</span></div>
-      <div><b>50.5 → 60.0</b><span>Spider SQL accuracy, base → fine-tuned</span></div>
+      <div><b>15% → 35%</b><span>DBMS problems solved, base → final model (FT-E)</span></div>
       <div><b>1 laptop</b><span>everything trained on an integrated GPU</span></div>
     </div>
     <p class="meta" style="margin-top:16pt">Satya Dedeepya · Deep Learning course project · Code: github.com/satyadedeepya/slm_dl_project<br>
@@ -185,7 +185,7 @@ figcaption { font-size: 8.5pt; color: var(--ink-2); margin-top: 3pt; }
 <section>
   <div class="kicker">Chapter 2</div>
   <h2>What is new in this project (novelty)</h2>
-  <p>Most similar projects follow one recipe: ask ChatGPT to write thousands of Q&amp;A pairs, fine-tune on them, show that a score went up. Our project differs in five ways.</p>
+  <p>Most similar projects follow one recipe: ask ChatGPT to write thousands of Q&amp;A pairs, fine-tune on them, show that a score went up. Our project differs in six ways.</p>
 
   <div class="box novel"><div class="t">Novelty 1 · Answers verified by code, not by AI</div>
   <p>For OS, CN, DBMS and Deep Learning we wrote Python <b>generators</b>. Each one creates a random problem and then <b>runs the real algorithm</b> to compute the answer: it simulates the CPU schedule, the page-replacement frames, the CRC division, the attribute closure, the convolution. So every one of the 3,000 training answers is <b>correct by construction</b>.</p>
@@ -207,6 +207,9 @@ figcaption { font-size: 8.5pt; color: var(--ink-2); margin-top: 3pt; }
 
   <div class="box novel"><div class="t">Novelty 5 · Everything on a laptop, with a usable product</div>
   <p>All training and testing ran on an <b>integrated Intel GPU</b>, not a cloud server. We solved real engineering problems (memory limits, the GPU not supporting 4-bit models, laptop sleep interrupting training) and delivered a working <b>chat app</b> with model switching, a <b>practice app</b> that grades the model automatically, and a <b>research paper</b>.</p></div>
+
+  <div class="box novel"><div class="t">Novelty 6 · Explanations are measured, not assumed</div>
+  <p>Accuracy tests only check the final answer. We added a <b>blind judge</b> that compares two answers without knowing which model wrote them, judges every pair <b>twice with the order swapped</b>, and scores correctness, steps and clarity. It revealed that training on short answers made the tutor <i>terser</i> than the base model, which led to the teaching-style training stages (FT-D, FT-E) in Chapter 9. Finding: <b>the model copies the length and format of its training answers</b>, so good explanations must be designed into the data.</p></div>
 
   <p>In addition, the <b>error analysis</b> (Chapter 7) gives a clear finding: the model fails mainly at <i>executing</i> procedures, not at knowing them. That points to specific next steps.</p>
 </section>
@@ -347,6 +350,8 @@ Final answer: 434 cylinders</div>
     <li><b>No catastrophic forgetting.</b> Coding (MBPP) and GATE did not get worse.</li>
     <li><b>CS-Bench improved a little</b> (+4), but half of that came from the model writing its answer in the right format more often. We reported this honestly.</li>
   </ul>
+  <div class="box simple"><div class="t">What happened in later models</div>
+  <p>The later stages built on FT-B. The <b>final model, FT-E</b>, scores DBMS 35% (base 15%), CN 11% (base 1%), Deep Learning 13% (base 2%) and SQL 59% (base 50.5%), all significantly better than the base model, with coding unchanged. See Chapters 8 and 9.</p></div>
   <div class="box honest"><div class="t">Limitation to mention</div>
   <p>FT-B trained for 35% more steps than FT-A, so part of the difference could come from extra training. A perfectly matched comparison is listed as future work.</p></div>
 </section>
@@ -449,9 +454,9 @@ Parameters = (11·11·48 + 1) × 10 = 58,090.</div>
         <li>Sidebar with past conversations, saved in your browser.</li>
         <li>Model switch: <b>FT-E (default), FT-D, FT-C, FT-B, FT-A or the base model</b>, to show the difference live.</li>
         <li>Answers appear word by word (streaming), with tables, highlighted code and math written as plain readable text (no LaTeX symbols), plus copy and stop buttons.</li>
-        <li>Runs fully on the laptop. Each answer takes about 20–45 seconds.</li>
+        <li>Runs fully on the laptop. Each answer takes about 20–80 seconds.</li>
       </ul>
-      <p><b>How it works:</b> a Python server (FastAPI) loads the base model once and attaches all three LoRA adapters by name. Switching models just switches the adapter, with no reloading.</p>
+      <p><b>How it works:</b> a Python server (FastAPI) loads the base model once and attaches all five LoRA adapters (FT-A to FT-E) by name. Switching models just switches the adapter, with no reloading.</p>
     </div>
     <div>
       <h3>Verified practice demo</h3>
@@ -461,7 +466,7 @@ Parameters = (11·11·48 + 1) × 10 = 58,090.</div>
         <li>The model solves it, and the app shows ✅ or ❌ with the correct answer.</li>
       </ul>
       <h3>Research paper</h3>
-      <p>A 4-page IEEE-style paper (<code>paper/CSE-Tutor_paper.pdf</code>) with abstract, method, results tables, figures, error analysis, limitations and 15 references.</p>
+      <p>A 7-page IEEE-style paper (<code>paper/CSE-Tutor_paper.pdf</code>): pipeline diagram, data, training stages, evaluation protocol, results for all five models, the blind explanation study, a worked example, error analysis, discussion, limitations and 23 references. The same paper in LaTeX for Overleaf is <code>paper/CSE-Tutor_overleaf.zip</code>.</p>
     </div>
   </div>
 
@@ -471,14 +476,15 @@ Parameters = (11·11·48 + 1) × 10 = 58,090.</div>
     <tbody>
       <tr><td>Chat with the model</td><td><code>python demo/server.py</code>, then open http://127.0.0.1:8000</td></tr>
       <tr><td>Practice problems demo</td><td><code>python demo/app.py</code>, then open http://127.0.0.1:7860</td></tr>
-      <tr><td>Run all 44 tests</td><td><code>python -m unittest discover -s tests -t .</code></td></tr>
+      <tr><td>Run all 47 tests</td><td><code>python -m pytest tests</code></td></tr>
       <tr><td>Rebuild results tables</td><td><code>python eval/summarize.py</code></td></tr>
       <tr><td>Rebuild figures</td><td><code>python eval/plots.py</code></td></tr>
+      <tr><td>Explanation comparison report</td><td><code>python eval/explain_eval.py report --a base --b ft-e</code></td></tr>
       <tr><td>Rebuild the paper PDF</td><td><code>paper\build_pdf.cmd</code></td></tr>
     </tbody>
   </table>
   <div class="box honest"><div class="t">Before your review</div>
-  <p>The trained adapters are in <code>outputs/</code> on the laptop and are <b>not on GitHub</b>. Keep a backup. Start the chat app 2 minutes before the demo, because loading the model takes time. A good live question: <i>"For R(A, B, C, D) with FDs A → B, B → C, C → D, find the closure of A and all candidate keys."</i></p></div>
+  <p>The trained adapters are in <code>outputs/</code> on the laptop and are <b>not on GitHub</b>. Keep a backup. Start the chat app 2 minutes before the demo, because loading the model takes time. Good live questions: <i>"For R(A, B, C, D) with FDs A → B, B → C, C → D, find the closure of A and all candidate keys."</i> and <i>"A conv layer gets 32×32×3 input, 16 filters of 5×5, stride 1, padding 2. Output size and parameters?"</i> (answer: 32×32×16, 1,216). Ask with the base model first, then FT-E, to show the difference. If FT-E slips on arithmetic, say so: it is the known weakness from the error analysis.</p></div>
 
   <h3>Project timeline</h3>
   <table>
@@ -502,7 +508,7 @@ Parameters = (11·11·48 + 1) × 10 = 58,090.</div>
     <dt>1. Why a small model instead of GPT-4?</dt>
     <dd>It runs offline on a student's laptop at no cost and keeps data private. The project asks how far a small model can be pushed with good data.</dd>
     <dt>2. What exactly is your novelty?</dt>
-    <dd>Training answers for numerical topics are computed by code, so they are guaranteed correct, and an ablation (FT-A vs FT-B) proves that this verified data causes the numerical gains. Plus fair testing with statistics, all on a laptop.</dd>
+    <dd>Training answers for numerical topics are computed by code, so they are guaranteed correct, and an ablation (FT-A vs FT-B) proves that this verified data causes the numerical gains. Plus fair testing with statistics, a blind judge for explanation quality, and teaching-style training, all on a laptop.</dd>
     <dt>3. Why LoRA and not full fine-tuning?</dt>
     <dd>Full fine-tuning updates 1.5 billion numbers and does not fit in laptop memory. LoRA trains 18.5 million (1.18%), and the result can be switched on and off as a small adapter file.</dd>
     <dt>4. How do you know the model did not just memorise the test?</dt>
@@ -518,15 +524,19 @@ Parameters = (11·11·48 + 1) × 10 = 58,090.</div>
     <dt>9. Why two different DL metrics?</dt>
     <dd>Exact match needs every number right, which is too harsh to show learning. Value-level credit is like step marks and shows the formulas were learned (26% vs 15.8%, significant).</dd>
     <dt>10. What would you do with more time?</dt>
-    <dd>Train more epochs; give the model a calculator (tool use); write solutions that re-check each step; preference training (DPO) using correct/incorrect pairs from the generators; a step-matched ablation; and run MMLU for general knowledge.</dd>
+    <dd>Train more epochs; give the model a calculator (tool use); write solutions that re-check each step; preference training (DPO) using the judged pairs and correct/incorrect generator answers; a step-matched ablation; a human rating of explanations; and run MMLU for general knowledge.</dd>
     <dt>11. Where did Gemini help, and how did you stop its mistakes?</dt>
     <dd>Concept Q&amp;A, GATE explanations and textbook Q&amp;A. We only kept answers that matched official keys or could be answered from the textbook passage, and we never used Gemini for the numerical answers.</dd>
     <dt>12. Does your model explain better than the base model, or only answer better?</dt>
     <dd>Both, measured separately. On numerical problems the fine-tuned model is clearly better (wins 13–5 in a blind comparison, and significantly higher accuracy on DL, DBMS, CN and SQL). On open concept questions the first fine-tuned model explained worse, because it was trained on short answers; after retraining on fuller teaching-style answers (FT-E) the steps score rose from 2.7 to 3.6 (base 4.0), but the base model still wins slightly more concept questions (6–11–3, not significant). Honest answer: better at solving, not yet better at open-ended explaining.</dd>
     <dt>13. How did you measure explanation quality fairly?</dt>
     <dd>A blind judge: an AI model compares two answers without knowing which model wrote them, scores correctness, steps and clarity, and every pair is judged twice with the order swapped. Numericals include the verified solution so the judge can check correctness.</dd>
-    <dt>14. What were the hardest engineering issues?</dt>
-    <dd>Intel GPU limits (no 4-bit, memory), slow generation (fixed with batching), and the laptop sleeping during multi-hour training (fixed with checkpoints and resume).</dd>
+    <dt>14. Why is FT-E worse than FT-D on DL numericals (13% vs 21%)?</dt>
+    <dd>FT-E replayed fewer verified problems (450 vs 1,050) to keep training short, and it focused on longer explanations. It gained on DBMS (24% → 35%) instead. With one training run per stage some of the difference is also chance. Both are much better than the base model (2%).</dd>
+    <dt>15. Why does the chat app never show LaTeX like $$…$$?</dt>
+    <dd>The app converts any math the model writes into plain readable text (for example z = Σ wᵢxᵢ + b), and the newer training answers were written without LaTeX, so students always see normal symbols.</dd>
+    <dt>16. What were the hardest engineering issues?</dt>
+    <dd>Intel GPU limits (no 4-bit, memory), slow generation (fixed with batching), the laptop sleeping during multi-hour training (fixed with checkpoints, resume and a keep-awake task), and free-tier API quotas for the teacher and judge models (fixed by switching models and running requests in parallel).</dd>
   </dl>
 </section>
 
@@ -539,8 +549,10 @@ Parameters = (11·11·48 + 1) × 10 = 58,090.</div>
       <tr><td><b>Ablation</b></td><td>An experiment that removes one ingredient to see its effect (FT-A = FT-B minus verified data).</td></tr>
       <tr><td><b>Adapter</b></td><td>The small set of LoRA weights added to the frozen model; it can be switched on or off.</td></tr>
       <tr><td><b>Baseline</b></td><td>The model before any training, used for comparison (B0, B1).</td></tr>
+      <tr><td><b>Blind, order-balanced judging</b></td><td>The judge does not know which model wrote which answer, and every pair is judged twice with the order swapped, so it cannot favour a name or a position.</td></tr>
       <tr><td><b>Checkpoint</b></td><td>A saved copy of training progress, so training can resume after an interruption.</td></tr>
       <tr><td><b>Confidence interval</b></td><td>The range in which the true score very likely lies.</td></tr>
+      <tr><td><b>Continued training</b></td><td>Training an existing adapter further on new data (FT-C, FT-D and FT-E each start from the previous model).</td></tr>
       <tr><td><b>Contamination</b></td><td>Test questions leaking into training data, which makes scores unfairly high. We removed it.</td></tr>
       <tr><td><b>Epoch</b></td><td>One full pass over the training data.</td></tr>
       <tr><td><b>Fine-tuning</b></td><td>Further training of a pre-trained model on a specific task.</td></tr>
@@ -548,12 +560,15 @@ Parameters = (11·11·48 + 1) × 10 = 58,090.</div>
       <tr><td><b>Generator</b></td><td>Our Python program that creates a random problem and computes its correct answer.</td></tr>
       <tr><td><b>Hallucination</b></td><td>The model stating something false or invented, e.g. a SQL column that does not exist.</td></tr>
       <tr><td><b>Learning rate</b></td><td>How big each adjustment is during training.</td></tr>
+      <tr><td><b>LLM-as-a-judge</b></td><td>Using a strong AI model to compare or score answers, here for explanation quality.</td></tr>
       <tr><td><b>LoRA</b></td><td>Low-Rank Adaptation: trains small extra matrices instead of the whole model.</td></tr>
       <tr><td><b>Loss</b></td><td>A number measuring how wrong the model's predictions are; training lowers it.</td></tr>
       <tr><td><b>McNemar test</b></td><td>A significance test comparing two models on the same questions.</td></tr>
       <tr><td><b>Parameter</b></td><td>One learned number inside the model.</td></tr>
       <tr><td><b>Replay data</b></td><td>Old training examples mixed into new training to prevent forgetting.</td></tr>
+      <tr><td><b>Sign test</b></td><td>A significance test on win/loss counts: are the wins more than chance?</td></tr>
       <tr><td><b>SFT</b></td><td>Supervised fine-tuning: learning from (question, ideal answer) pairs.</td></tr>
+      <tr><td><b>Teaching-style answer</b></td><td>Our answer format: direct answer, numbered key points, a worked example, and an "In short" summary.</td></tr>
       <tr><td><b>Token</b></td><td>A piece of a word; models read and write tokens.</td></tr>
       <tr><td><b>Validation set</b></td><td>Examples kept aside during training to check that the model generalises.</td></tr>
     </tbody>
