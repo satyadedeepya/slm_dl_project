@@ -1,6 +1,6 @@
 """CSE-Tutor demo: chat with the fine-tuned model and try it on freshly generated, verified problems.
 
-  python demo/app.py                       # FT-C adapter (FT-B if FT-C is missing), http://127.0.0.1:7860
+  python demo/app.py                       # newest adapter (FT-E, else FT-D, FT-C, FT-B), http://127.0.0.1:7860
   python demo/app.py --adapter outputs/ft-a/adapter
   python demo/app.py --share               # temporary public Gradio link
 
@@ -137,7 +137,7 @@ def build(tutor: Tutor, adapter_name: str) -> gr.Blocks:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", default="Qwen/Qwen2.5-1.5B-Instruct")
-    default = ROOT / "outputs" / ("ft-c" if (ROOT / "outputs" / "ft-c" / "adapter").exists() else "ft-b") / "adapter"
+    default = ROOT / "outputs" / next(r for r in ("ft-e", "ft-d", "ft-c", "ft-b") if (ROOT / "outputs" / r / "adapter").exists()) / "adapter"
     ap.add_argument("--adapter", default=str(default))
     ap.add_argument("--share", action="store_true")
     ap.add_argument("--port", type=int, default=7860)
