@@ -25,6 +25,7 @@ sys.path.insert(0, str(ROOT))
 from data.generators import cn_gen, dbms_gen, dl_gen, os_gen  # noqa: E402
 from data.generators.common import SYSTEM_PROMPT  # noqa: E402
 from data.generators.grading import grade  # noqa: E402
+from data.plain_math import plain_math  # noqa: E402
 
 GEN_INSTR = "Solve step by step. End with a line starting with 'Final answer:'."
 SUBJECTS = {"Operating Systems": os_gen, "Computer Networks": cn_gen, "DBMS": dbms_gen, "Deep Learning": dl_gen}
@@ -93,7 +94,7 @@ def build(tutor: Tutor, adapter_name: str) -> gr.Blocks:
                 history = (history or []) + [{"role": "user", "content": question},
                                              {"role": "assistant", "content": ""}]
                 for text in tutor.stream(history[:-1], adapter_on):
-                    history[-1]["content"] = text
+                    history[-1]["content"] = plain_math(text)  # math as plain text, no LaTeX
                     yield "", history
 
             send.click(respond, [msg, chat, use_adapter], [msg, chat])
@@ -124,10 +125,10 @@ def build(tutor: Tutor, adapter_name: str) -> gr.Blocks:
                 text = ""
                 messages = [{"role": "user", "content": rec["messages"][1]["content"] + "\n\n" + GEN_INSTR}]
                 for text in tutor.stream(messages, adapter_on):
-                    yield text, ""
+                    yield plain_math(text), ""
                 ok = grade(rec["final"], text)
                 ref = rec["messages"][2]["content"].split("**Final answer:**")[-1].strip()
-                yield text, f"### {'✅ Correct' if ok else '❌ Incorrect'}\n**Verified answer:** {ref}"
+                yield plain_math(text), f"### {'✅ Correct' if ok else '❌ Incorrect'}\n**Verified answer:** {ref}"
 
             new.click(new_problem, subject, [state, question, answer, verdict])
             solve.click(solve_problem, [state, use_adapter], [answer, verdict])

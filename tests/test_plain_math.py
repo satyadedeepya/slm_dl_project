@@ -18,3 +18,10 @@ def test_fractions_scripts_and_greek():
 
 def test_prices_are_not_math():
     assert plain_math("It costs $5 and $10.") == "It costs $5 and $10."
+
+
+def test_matrices_and_aligned_equations():
+    src = r"$$ \mathbf{z} = \begin{bmatrix} 0.5 & 1.0 \\ -0.8 & 0.5 \end{bmatrix} \begin{bmatrix} 2 \\ -1 \end{bmatrix} $$"
+    assert plain_math(src).strip() == "z = [0.5, 1.0; -0.8, 0.5] [2; -1]"
+    out = plain_math(r"\[ \begin{aligned} a &= 1 \\ b &= 2 \end{aligned} \]")
+    assert "a = 1" in out and "b = 2" in out and "begin" not in out

@@ -67,7 +67,21 @@ def _script(x: str, table: dict, mark: str) -> str:
     return mark + _wrap(x)
 
 
+ENV = re.compile(r"\\begin\{(\w+\*?)\}(?:\{[^}]*\})?(.*?)\\end\{\1\}", re.S)
+
+
+def _environment(m: re.Match) -> str:
+    """Matrices become [a, b; c, d]; aligned/cases rows go on separate lines."""
+    name, body = m.group(1), m.group(2)
+    rows = [r for r in re.split(r"\\\\", body) if r.strip()]
+    if name.endswith("matrix") or name == "array":
+        return "[" + "; ".join(", ".join(latex_to_text(c) for c in r.split("&")) for r in rows) + "]"
+    return "\n".join(" ".join(latex_to_text(c) for c in r.split("&")) for r in rows)
+
+
 def latex_to_text(s: str) -> str:
+    while ENV.search(s):  # repeat for nested environments
+        s = ENV.sub(_environment, s)
     out = ""
     i = 0
     while i < len(s):

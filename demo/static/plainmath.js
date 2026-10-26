@@ -41,7 +41,17 @@
     return mark + wrap(x);
   }
 
+  // Matrices become [a, b; c, d]; aligned/cases rows go on separate lines.
+  const ENV = /\\begin\{(\w+\*?)\}(?:\{[^}]*\})?([\s\S]*?)\\end\{\1\}/;
+  function environment(m, name, body) {
+    const rows = body.split(/\\\\/).filter((r) => r.trim());
+    if (name.endsWith("matrix") || name === "array")
+      return "[" + rows.map((r) => r.split("&").map(convert).join(", ")).join("; ") + "]";
+    return rows.map((r) => r.split("&").map(convert).join(" ")).join("\n");
+  }
+
   function convert(s) {
+    while (ENV.test(s)) s = s.replace(new RegExp(ENV.source, "g"), environment);  // repeat for nested ones
     let out = "";
     for (let i = 0; i < s.length; ) {
       const c = s[i];
