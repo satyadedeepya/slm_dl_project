@@ -2,7 +2,7 @@
 
 *One-month course project. Base model: Qwen2.5-1.5B-Instruct. Code, data card, results and weekly reports are in this repository.*
 
-The research paper version of this report is [paper/CSE-Tutor_paper.pdf](../paper/CSE-Tutor_paper.pdf) (7 pages, IEEE style); the same paper in LaTeX for Overleaf is `paper/CSE-Tutor_overleaf.zip`.
+The research paper version of this report is [paper/CSE-Tutor_paper.pdf](../paper/CSE-Tutor_paper.pdf) (6 pages, IEEE style, simple English); the same paper in LaTeX for Overleaf is `paper/CSE-Tutor_overleaf.zip`.
 
 ## Abstract
 

@@ -14,7 +14,7 @@
 
 \begin{document}
 
-\title{CSE-Tutor: Verified Synthetic Data and Explanation-Style Training for a 1.5B-Parameter Computer Science Tutor}
+\title{CSE-Tutor: Teaching a Small Language Model to Solve and Explain Computer Science Problems}
 
 \author{\IEEEauthorblockN{Satya Dedeepya}
 \IEEEauthorblockA{Course project, Deep Learning\\
@@ -23,182 +23,152 @@
 \maketitle
 
 \begin{abstract}
-Small language models can run privately on a student's laptop, but they are unreliable on the numerical problems that dominate computer-science examinations and their explanations are uneven. We fine-tune Qwen2.5-1.5B-Instruct with LoRA as a tutor for six subjects (data structures and algorithms, programming, databases, operating systems, computer networks and deep learning). The distinctive part of the training data is \emph{programmatically verified}: 3,000 problems from 41 generators whose step-by-step solutions are computed by running the underlying algorithm and are cross-checked against textbook examples and PyTorch. All training and evaluation run on an integrated Intel Arc GPU. On held-out tests the first fine-tuned model significantly improves text-to-SQL execution accuracy (50.5\ra 60.0), functional-dependency problems (15\ra 30) and network numericals (1\ra 8) over the base model (exact McNemar $p<0.05$) without loss on code generation, and an ablation that removes only the verified data removes these gains. A continued-training stage adds deep learning without forgetting. Because accuracy does not measure explanation quality, we add a blind, order-balanced pairwise judge on 39 held-out questions. It shows that fine-tuning on short targets made concept explanations worse than the base model's (6--13); two explanation-style stages trained on teaching-format answers raise answer length from 79 to 194 words and narrow, but do not close, this gap (6--11--3, not significant), while the final model is significantly more accurate than the base model on four of five tasks (DBMS 15\ra 35, DL 2\ra 13, CN 1\ra 11, Spider 50.5\ra 59.0) and wins numerical solutions 13--5.
+Small language models can run on a student's own laptop, for free and without sending data anywhere. However, they often get the numerical problems of computer-science exams wrong. We fine-tuned Qwen2.5-1.5B-Instruct with LoRA to work as a tutor for six subjects: data structures, programming, databases (DBMS), operating systems (OS), computer networks (CN) and deep learning (DL). The key idea is \emph{verified training data}: we wrote 41 small programs that create practice problems and compute the correct answer by running the real algorithm, so every answer is guaranteed to be right. All training and testing ran on a laptop with an integrated Intel GPU. On unseen test questions, the fine-tuned model is clearly more accurate than the original model: SQL writing rises from 50.5\% to 60.0\%, DBMS problems from 15\% to 30\% and networking problems from 1\% to 8\%, and an experiment without the verified data shows that this data causes the gains. We then added deep learning and two training stages that teach the model to explain like a teacher. A blind comparison by a judge model shows that the final model solves numerical problems better than the original model (13 wins to 5) and is much more accurate (DBMS 15\ra 35\%, DL 2\ra 13\%), while the original model still explains open concept questions slightly better.
 \end{abstract}
 
 \begin{IEEEkeywords}
-small language models, LoRA, synthetic data, data verification, LLM-as-a-judge, computer science education, text-to-SQL
+small language models, fine-tuning, LoRA, synthetic data, computer science education
 \end{IEEEkeywords}
 
 \section{Introduction}
-Students preparing for university examinations, GATE and placement interviews need an assistant that explains concepts, solves numerical problems step by step and writes correct code and SQL. Large hosted models do this well but cost money, need connectivity and send student data to a third party. A 1.5B-parameter model runs locally on an ordinary laptop, but out of the box it computes CPU-scheduling waiting times, page faults and subnet ranges incorrectly: it pattern-matches the shape of a solution instead of executing the procedure.
+Students preparing for university exams, GATE and job interviews need a helper that can explain ideas, solve numerical problems step by step and write correct code and SQL. Large online models such as ChatGPT can do this, but they need the internet, may cost money and send the student's data to a company. A small model with 1.5 billion parameters can run on an ordinary laptop instead. The problem is that, out of the box, such a model gets many exam problems wrong. For example, it copies the \emph{shape} of a CPU-scheduling solution but fills it with wrong waiting times.
 
-The common recipe for adapting a small model is to fine-tune it on question--answer pairs written by a larger model~\cite{selfinstruct,glan,orca}. Such labels are unverified, and a small student model can learn the teacher's mistakes. For the algorithmic part of the curriculum we take a different route: we write generators that sample random problem instances and \emph{compute} their solutions by running the algorithm, so every label is correct by construction. For the conceptual part we use teacher answers, but filter them against answer keys and, in later stages, rewrite them into a fixed teaching format.
+The usual way to improve a small model is to fine-tune it on questions and answers written by a bigger model~\cite{selfinstruct,glan}. But those answers are not checked, so the small model can learn the big model's mistakes. We take a different approach for the parts of the syllabus that are calculations. We write \textbf{generators}: short programs that make a random problem and then \emph{compute} its answer by actually running the algorithm (for example, simulating the CPU scheduler or the CRC division). Every training answer they produce is correct by construction.
 
-We ask four research questions:
+We study four questions:
 \begin{itemize}
-\item \textbf{RQ1:} how much does LoRA fine-tuning improve a 1.5B model on CS tasks compared with zero- and few-shot prompting?
-\item \textbf{RQ2:} does the verified numerical data cause the improvement on numerical problems, or does the rest of the mix?
-\item \textbf{RQ3:} can a new subject (deep learning) be added cheaply by continued training without forgetting earlier skills?
-\item \textbf{RQ4:} does the fine-tuned tutor \emph{explain} better than the base model, not only answer more accurately, and can explanation-style training fix it if it does not?
+\item \textbf{RQ1:} How much does fine-tuning improve a small model compared with simply prompting it?
+\item \textbf{RQ2:} Is the verified data really the reason for the improvement on numerical problems?
+\item \textbf{RQ3:} Can we add a new subject (deep learning) later without the model forgetting what it learned?
+\item \textbf{RQ4:} Does the fine-tuned model also \emph{explain} better than the original model, and if not, can we fix that?
 \end{itemize}
-Our contributions are: (1) verified generators for 41 problem types across operating systems, networks, databases and deep learning, tested against textbook examples and PyTorch; (2) a controlled ablation isolating the effect of the verified data; (3) a statistically careful evaluation on seven held-out benchmarks (bootstrap confidence intervals, exact McNemar tests, format failures counted separately); (4) a blind, order-balanced pairwise evaluation of explanation quality, and two explanation-style training stages measured with it; (5) an error taxonomy of the fine-tuned model; and (6) a local chat interface that serves all model variants. Everything, including five training runs, runs on a laptop with an integrated GPU.
-
-The main findings are that verified data is what teaches procedures (RQ2), that a short continued-training stage with replay adds a subject without forgetting (RQ3), and that the \emph{length and format of the training targets} largely decide how the model explains (RQ4): training on short answers made the tutor more accurate but terser than the base model, and longer teaching-format targets recover most, but not all, of the base model's explanation quality.
+Our main contributions are: (1) 41 tested problem generators for OS, CN, DBMS and DL; (2) a controlled experiment showing that the verified data causes the gains; (3) careful testing on seven unseen test sets with statistical tests; (4) a blind, fair way to compare explanations, and two training stages that improve them; and (5) a chat app that runs fully on a laptop.
 
 \section{Related Work}
-\emph{Parameter-efficient fine-tuning.} LoRA~\cite{lora} trains low-rank updates of frozen weights; QLoRA~\cite{qlora} additionally quantises the base model to 4 bits. We use LoRA on all attention and MLP projections of Qwen2.5-1.5B-Instruct~\cite{qwen25,qwencoder}. Continued training of one adapter across stages is closely related to rehearsal methods for continual learning~\cite{replay}: we mix replay data from earlier stages into each new stage.
+LoRA~\cite{lora} fine-tunes a model by training small extra matrices instead of all its weights, and QLoRA~\cite{qlora} also compresses the base model to 4 bits. We use LoRA on Qwen2.5-1.5B-Instruct~\cite{qwen25}. Other work has fine-tuned models for programming education~\cite{guidelm}, for data-structures problems~\cite{dsaqlora} and as local teaching assistants~\cite{aita,smallmodels}. CS-Bench~\cite{csbench} is a benchmark for computer-science knowledge, and we use it in our tests. Self-Instruct~\cite{selfinstruct} and GLAN~\cite{glan} build training data with language models, and Orca~\cite{orca} shows that small models learn a reasoning style by copying a teacher's step-by-step explanations. LIMA~\cite{lima} argues that fine-tuning mainly teaches the \emph{format} of answers, which matches what we found. Strong models can act as judges of answer quality, but they tend to prefer the first or the longer answer~\cite{mtbench}, so we judge each pair twice in swapped order. Training on a new task can make a model forget old skills~\cite{forgetting}; we reduce this by mixing old examples into every new stage.
 
-\emph{Language models for CS education.} GuideLM~\cite{guidelm} shows that small supervised sets shape pedagogical behaviour; QLoRA has been applied to data-structures problems~\cite{dsaqlora}; local open-source teaching assistants are studied in~\cite{aita,smallmodels,vta}. CS-Bench~\cite{csbench} is the closest benchmark and serves as our multiple-choice evaluation.
-
-\emph{Synthetic and distilled instruction data.} Self-Instruct~\cite{selfinstruct} and GLAN~\cite{glan} generate instruction data with language models, and Orca~\cite{orca} shows that training on a teacher's step-by-step explanation traces transfers reasoning style to smaller models. LIMA~\cite{lima} argues that alignment mostly teaches a model the \emph{format} of answers, which matches our observation that answer length and structure follow the training targets. Our generators are programs, so their correctness does not depend on a teacher; program-aided reasoning~\cite{pal} is the natural next step for the arithmetic errors that remain.
-
-\emph{Evaluating explanations.} Strong language models can serve as judges of open-ended answers, but they show position and verbosity biases~\cite{mtbench}; we therefore judge every pair in both orders, hide model names, instruct the judge not to reward length and count a win only when both orders agree. Preference optimisation such as DPO~\cite{dpo} is a natural follow-up once such comparisons exist.
-
-\emph{Forgetting.} Parameter-efficient tuning still forgets~\cite{forgetting}. We keep replay data in every stage and re-measure code generation and SQL after every stage.
-
-\section{System Overview}
-Fig.~\ref{fig:pipeline} shows the pipeline. Data come from four kinds of sources with different quality gates. Five LoRA runs are trained: FT-A and FT-B from the base model (the ablation pair), then FT-C, FT-D and FT-E as continued-training stages, each starting from the previous adapter. Every run is evaluated with the same harness, and all adapters are served side by side by one chat server.
+\section{Methodology}
+Fig.~\ref{fig:pipeline} gives an overview. We collect training data from four kinds of sources, each with its own quality check, train five versions of the model one after another, test each version, and serve all of them in one chat app.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=0.95\textwidth]{figures/pipeline.png}
-\caption{Pipeline: data sources and quality gates, the five LoRA runs (each continued stage starts from the previous adapter), the two evaluations and the chat server.}
+\caption{Overview: data sources and their quality checks, the five training stages (each later stage continues from the previous one), the two kinds of tests, and the chat app.}
 \label{fig:pipeline}
 \end{figure*}
 
-\section{Data}
-\subsection{Verified generators}
-Each generator samples parameters, runs the algorithm and writes a solution in a fixed teaching format that ends with a \texttt{Final answer:} line, plus a machine-readable grading specification (Table~\ref{tab:gen}). Questions state their conventions (tie-breaking, whether C-SCAN counts the return seek, whether parameters include biases) so that the reference answer is unambiguous. Test problems are drawn from parameter pools disjoint from training and from a different random seed. Correctness is checked by unit tests against textbook worked examples (e.g.\ Silberschatz scheduling and page-replacement figures), by property tests (Belady's optimality, validity of safety sequences), and, for deep learning, by recomputing every answer type with PyTorch layers and autograd.
+\subsection{Verified problem generators}
+Each generator picks random numbers, runs the real algorithm and writes a step-by-step solution that ends with a line ``Final answer: \ldots''. It also stores the answer in a form a program can check automatically (Table~\ref{tab:gen}). Questions state any rules that could change the answer, such as how ties are broken. Test problems use different number ranges from training problems, so the model cannot memorise them. We checked the generators with automatic tests: against worked examples from standard textbooks, and, for deep learning, by computing the same answers again with PyTorch.
 
 \begin{table}[t]
 \centering
-\caption{Verified generator families}
+\caption{Verified problem generators}
 \label{tab:gen}
-\begin{tabular}{@{}l p{4.3cm} r@{}}
+\begin{tabular}{@{}l p{4.4cm} r@{}}
 \toprule
-Subject & Families & Train / test \\
+Subject & Problem types & Train / test \\
 \midrule
-OS & scheduling (6 algorithms), page replacement, Banker's, disk scheduling & 900 / 100 \\
+OS & CPU scheduling (6 algorithms), page replacement, Banker's algorithm, disk scheduling & 900 / 100 \\
 CN & subnetting, CRC, checksum, delays, sliding window & 900 / 100 \\
-DBMS & closure, candidate keys, normal form, lossless join & 600 / 100 \\
-DL & conv/pool shapes, MLP parameters, forward pass, softmax-CE, GD, backprop, momentum, attention, P/R/F1 & 600 / 100 \\
+DBMS & attribute closure, candidate keys, normal forms, lossless join & 600 / 100 \\
+DL & convolution and pooling sizes, parameter counts, forward pass, softmax loss, gradient descent, backpropagation, attention, precision/recall & 600 / 100 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\noindent\fbox{\parbox{0.96\columnwidth}{\small\textsc{Example generated problem (DL, test split).} A convolutional layer receives an input of size $227\times227\times6$. It has 20 filters of size $11\times11$, stride 2 and padding 5. Find the output size and the number of trainable parameters (including biases).\\[2pt]
-Reference (computed): $\lfloor(227+2\cdot5-11)/2\rfloor+1=114$, so $114\times114\times20$; parameters $(11\cdot11\cdot6+1)\cdot20=14{,}540$. Grading spec: numbers [114, 114, 20, 14540].}}
+\noindent\fbox{\parbox{0.96\columnwidth}{\small\textsc{Example generated problem.} ``A convolutional layer receives an input of size $227\times227\times6$. It has 20 filters of size $11\times11$, stride 2 and padding 5. Find the output size and the number of trainable parameters.''\\[2pt]
+Computed answer: $(227+2\times5-11)/2+1=114$, so the output is $114\times114\times20$; parameters $=(11\times11\times6+1)\times20=14{,}540$.}}
 
-\subsection{First-stage training mix}
-The first-stage mix (9,335 examples, 2.68M tokens; Table~\ref{tab:mix}) combines the generators with GATE/ISRO previous-year questions whose explanations were produced by a teacher model \emph{without the key} and kept only when the teacher agreed with the official answer (990 of 1,154), concept Q\&A over a 133-topic syllabus (multiple-choice and true/false items kept only on key agreement), Q\&A grounded in four openly licensed textbooks, Spider~\cite{spider} text-to-SQL with real schemas, MBPP~\cite{mbpp} and CodeAlpaca for code, and general replay data. All sources are deduplicated with MinHash and decontaminated against every evaluation set with 13-gram overlap. GATE papers up to 2020 and half of 2021--2026 are used for training; the other half of 2021--2026 is held out.
+\subsection{The training data}
+The main training set has 9,335 examples (Table~\ref{tab:mix}). Besides 2,400 generated problems, it contains GATE and ISRO past exam questions, short concept questions and answers, questions based on free textbooks, SQL questions from Spider~\cite{spider} and Python tasks from MBPP~\cite{mbpp} and CodeAlpaca. Where a bigger ``teacher'' model wrote explanations, it did so \emph{without seeing the official answer}, and we kept an explanation only if the teacher's answer matched the official key (990 of 1,154 GATE/ISRO questions). We removed duplicate examples and any training example that overlapped with a test question.
 
 \begin{table}[t]
 \centering
-\caption{First-stage training mix (train + validation)}
+\caption{Main training set}
 \label{tab:mix}
 \begin{tabular}{@{}l r l@{}}
 \toprule
-Source & Examples & Quality gate \\
+Source & Examples & Quality check \\
 \midrule
-Verified generators (OS, CN, DBMS) & 2,400 & computed answers \\
-GATE / ISRO PYQs & 978 & teacher agrees with key \\
-Concept Q\&A (teacher) & 1,458 & MCQ/TF key agreement \\
-Open-textbook Q\&A & 1,170 & answerable from passage \\
-Spider & 1,335 & gold SQL executes \\
-MBPP / CodeAlpaca & 311 / 1,184 & tests pass / code parses \\
-Replay (Alpaca) & 499 & length filter \\
+Verified generators (OS, CN, DBMS) & 2,400 & answer computed by code \\
+GATE / ISRO past questions & 978 & teacher agrees with key \\
+Concept questions (teacher) & 1,458 & agrees with key \\
+Textbook questions & 1,170 & answer is in the passage \\
+Spider (SQL) & 1,335 & SQL query runs \\
+MBPP / CodeAlpaca (Python) & 311 / 1,184 & tests pass / code runs \\
+General examples & 499 & length check \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\subsection{Deep-learning stage}
-The DL stage (2,107 examples, 0.61M tokens) contains 600 verified DL problems, 307 DL concept Q\&A items over 36 syllabus topics (teacher-generated, filtered by key agreement) and 1,200 replay examples sampled from the first-stage mix, so that the earlier skills are rehearsed while the new subject is learned.
-
-\subsection{Explanation-style stages}
-An inspection of the training targets explained why the tutor's concept answers were terse: teacher concept answers had a median of 57--91 words and code/SQL targets 15--25 words, against about 290 words in the base model's own answers, and 291 targets contained \LaTeX. We therefore built a teaching-style set of about 1,340 questions (every open concept question plus ``What is \emph{X}?'' and ``Explain \emph{X} with an example'' for all 169 syllabus topics). A teacher model answers each one in a fixed format: a direct answer in one or two sentences, numbered key points with short bold labels, one worked example (numbers, a small table, a code snippet or a trace) and a closing ``In short:'' line; mathematics is written as plain Unicode text, never \LaTeX. Questions whose word overlap with any evaluation question has Jaccard similarity of at least 0.4 are removed (12 questions). The FT-D set uses these answers as written (median 164 words). For FT-E, every answer under 220 words was rewritten into a 250--350-word version that explains each point and adds a worked example and a common mistake, giving a median of 286 words. All targets are converted to plain-text mathematics; none contains \LaTeX.
-
-\section{Training}
-\emph{Setup.} LoRA rank 16, $\alpha=32$, dropout 0.05 on the q, k, v, o, gate, up and down projections (18.5M trainable parameters, 1.18\%); loss on assistant tokens only; AdamW with cosine decay and 3\% warm-up; effective batch 32 (batch 1 $\times$ 32 accumulation); one epoch per stage; bf16; length-grouped batches; maximum length 1,024 tokens. Continued stages load the previous adapter as trainable and use a lower learning rate (Table~\ref{tab:runs}).
-
-\emph{Hardware.} An Intel Core Ultra 5 125H with integrated Arc graphics and 8.4\,GB of shared memory. bitsandbytes 4-bit quantisation is not dependable on Intel XPU, so the base model is held in bf16 (the adapter is the same as in QLoRA). Batch 4 ran out of memory because the 152K-token vocabulary makes the logits alone about 2.5\,GB, hence gradient accumulation. Long runs were made robust to sleep and power events with checkpoint-and-resume and a keep-awake wrapper.
+\subsection{Five training stages}
+We used LoRA with rank 16, which trains only 18.5 million of the 1.5 billion parameters (1.18\%). Each stage ran for one pass over its data (one epoch) with an effective batch of 32 examples. The laptop's integrated Intel GPU does not support 4-bit models reliably, so we kept the base model in 16-bit precision. Table~\ref{tab:runs} lists the five stages:
+\begin{itemize}
+\item \textbf{FT-A and FT-B} are a matched pair. FT-B uses the full training set; FT-A uses the same set \emph{without} the generated problems. Comparing them shows what the verified data adds.
+\item \textbf{FT-C} continues from FT-B and adds deep learning: 600 verified DL problems and 307 DL concept answers. It also includes 1,200 old examples (``replay'') so the model does not forget earlier subjects.
+\item \textbf{FT-D and FT-E} teach the explanation style. We noticed that the teacher's concept answers in the training data were short (median 57--91 words), while the original model writes about 290 words. So we wrote new answers for about 1,300 concept questions in a fixed teaching format: a direct answer, numbered key points, a worked example and an ``In short'' summary, with all maths written as plain text. FT-D learns these answers (median 164 words); FT-E learns fuller versions of 250--350 words. Both also replay verified problems to keep the accuracy.
+\end{itemize}
 
 \begin{table*}[t]
 \centering
-\caption{Training runs. Each continued stage starts from the adapter in the ``Init'' column. Validation sets differ per stage, so losses are not comparable across rows.}
+\caption{The five training stages (each later stage continues from the stage in the ``Starts from'' column)}
 \label{tab:runs}
-\begin{tabular}{@{}l l l r r l r r@{}}
+\begin{tabular}{@{}l l l r r@{}}
 \toprule
-Run & Init & Training data & Examples & Steps & LR & Time & Val.\ loss \\
+Stage & Starts from & Training data & Examples & Training time \\
 \midrule
-FT-A & base & first-stage mix without generator data (ablation) & 6,588 & 206 & $2\times10^{-4}$ & 3.7 h & 0.95 \\
-FT-B & base & full first-stage mix & 8,868 & 278 & $2\times10^{-4}$ & 4.8 h & 0.65 \\
-FT-C & FT-B & DL problems + DL concepts + 1,200 replay & 2,107 & 66 & $10^{-4}$ & 70 min & 0.46 \\
-FT-D & FT-C & 1,192 teaching-style answers + 1,050 verified + 250 code/SQL replay & 2,492 & 78 & $10^{-4}$ & 96 min & 0.79 \\
-FT-E & FT-D & 1,254 fuller teaching-style answers + 450 verified + 100 code/SQL replay & 1,804 & 57 & $10^{-4}$ & 81 min & 0.68 \\
+FT-A & original & main set without generated problems (comparison run) & 6,588 & 3.7 h \\
+FT-B & original & full main set & 8,868 & 4.8 h \\
+FT-C & FT-B & deep-learning problems and concepts + 1,200 old examples & 2,107 & 70 min \\
+FT-D & FT-C & 1,192 teaching-style answers + 1,300 verified and code examples & 2,492 & 96 min \\
+FT-E & FT-D & 1,254 fuller teaching-style answers + 550 verified and code examples & 1,804 & 81 min \\
 \bottomrule
 \end{tabular}
 \end{table*}
 
-\section{Evaluation Protocol}
-\emph{Accuracy.} Adapters are merged and decoded greedily with the same prompts for every model (Table~\ref{tab:evalsets}). B0 and B1 are the base model prompted zero-shot and 3-shot. We report 95\% bootstrap confidence intervals~\cite{efron} and exact two-sided McNemar tests~\cite{mcnemar} on paired items, and count unparseable answers separately so that learning the answer format is not mistaken for knowledge. For DL numericals we also report value-level accuracy, the share of expected numbers that appear in the final answer, with a paired sign-flip permutation test.
+\subsection{How we tested the models}
+\emph{Accuracy.} We tested every model on questions it had never seen (Table~\ref{tab:tests}): 400 CS-Bench questions~\cite{csbench}, 100 new generated problems each for OS, CN, DBMS and DL, 200 MBPP coding tasks (the code must pass its tests), 200 Spider SQL questions (the query must return the right result) and 56 recent GATE questions. We compared the fine-tuned models with the original model, both without examples (B0) and with three worked examples in the prompt (B1). To check whether a difference is real or just luck, we used the McNemar test~\cite{mcnemar}, which compares two models on the same questions; a difference with $p<0.05$ is called significant.
+
+\emph{Explanation quality.} Accuracy only checks the final answer, not whether the explanation helps a student. So we also ran a \textbf{blind comparison} on 39 unseen questions: 19 numerical problems (with their correct solutions) and 20 concept questions such as ``What is CNN?''. A separate judge model (Gemma~4 31B) sees two answers labelled only ``A'' and ``B'', scores each for correctness, steps and clarity from 1 to 5, and picks the better one. It is told not to prefer an answer just because it is longer. Each pair is judged twice with A and B swapped, and a model wins a question only if it wins both times.
 
 \begin{table}[t]
 \centering
-\caption{Held-out evaluation sets}
-\label{tab:evalsets}
+\caption{Test sets (none of these questions were used in training)}
+\label{tab:tests}
 \begin{tabular}{@{}l r l@{}}
 \toprule
-Test & $n$ & Metric \\
+Test set & Questions & How an answer is scored \\
 \midrule
-CS-Bench DSA/OS/CN~\cite{csbench} & 400 & MCQ and T/F accuracy \\
-Verified OS / CN / DBMS / DL & 100 each & exact match (typed grader) \\
-MBPP test~\cite{mbpp} & 200 & pass@1 with tests \\
-Spider dev~\cite{spider} & 200 & execution accuracy \\
-GATE CS 2021--26 (held-out half) & 56 & MCQ accuracy \\
-Explanation set (RQ4) & 39 & blind pairwise judgement \\
+CS-Bench (DSA, OS, CN) & 400 & correct option chosen \\
+Generated OS / CN / DBMS / DL & 100 each & all final numbers correct \\
+MBPP (Python) & 200 & code passes the tests \\
+Spider (SQL) & 200 & query gives the right result \\
+GATE 2021--26 & 56 & correct option chosen \\
+Explanation set & 39 & blind judge, both orders \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\emph{Explanation quality.} Final-answer accuracy does not measure whether an answer teaches. The explanation set has 39 held-out questions: 19 verified numericals (one per problem type; DBMS has four types) with their reference solutions, and 20 concept questions of the kind students type into the chat interface (``What is CNN?'', ``Explain the TCP three-way handshake''). Each model answers with the training system prompt and greedy decoding, and answers are shown to the judge exactly as the chat interface shows them (\LaTeX{} converted to plain text). A fixed judge model (Gemma~4 31B) sees the question, the reference solution for numericals, and two answers labelled only A and B. It scores correctness, steps and clarity from 1 to 5 and names the better answer, with correctness weighted most and an explicit instruction not to prefer longer answers. Every pair is judged twice with the order swapped; a model wins a question only if it wins in both orders, and any disagreement counts as a tie. Significance of win--loss counts uses an exact sign test.
+\subsection{The chat app}
+To make the tutor usable, we built a chat app that runs on the same laptop. A small Python server loads the original model once and attaches all five trained versions as separate LoRA adapters, so the user can switch between them, or switch them off to see the original model, without reloading anything. Answers appear word by word. Any mathematics the model writes in \LaTeX{} code is shown as plain readable text, for example ``z = $\Sigma$ w$_i$x$_i$ + b'', so students never see raw symbols. A second app creates a fresh generated problem, lets the model solve it and marks the answer right or wrong using the computed solution.
 
 \section{Results}
 \begin{table*}[t]
 \centering
-\caption{Accuracy (\%) on held-out tasks; --: not evaluated}
+\caption{Accuracy (\%) on unseen test questions. * = significantly better than the original model B0 ($p<0.05$); -- = not tested}
 \label{tab:results}
 \begin{tabular}{@{}l r r r r r r r r@{}}
 \toprule
-Task & $n$ & B0 0-shot & B1 3-shot & FT-A & FT-B & FT-C & FT-D & FT-E \\
+Test & Questions & B0 original & B1 3 examples & FT-A & FT-B & FT-C & FT-D & FT-E \\
 \midrule
-CS-Bench (DSA/OS/CN) & 400 & 51.2 & \textbf{58.0} & 53.8 & 55.2 & -- & -- & -- \\
-OS numericals & 100 & 4.0 & 4.0 & 3.0 & 5.0 & -- & -- & -- \\
-CN numericals & 100 & 1.0 & 2.0 & 0.0 & 8.0 & 7.0 & \textbf{12.0} & 11.0 \\
-DBMS FD problems & 100 & 15.0 & 12.0 & 17.0 & 30.0 & 31.0 & 24.0 & \textbf{35.0} \\
-DL numericals & 100 & 2.0 & -- & -- & 3.0 & 5.0 & \textbf{21.0} & 13.0 \\
-MBPP pass@1 & 200 & 41.5 & 41.5 & 41.0 & \textbf{42.5} & 40.0 & 39.5 & 40.0 \\
-Spider (execution) & 200 & 50.5 & -- & 54.5 & \textbf{60.0} & 59.5 & 58.5 & 59.0 \\
-GATE CS 2021--26 & 56 & 33.9 & -- & \textbf{37.5} & 33.9 & -- & -- & -- \\
-\bottomrule
-\end{tabular}
-\end{table*}
-
-\begin{table*}[t]
-\centering
-\caption{Exact McNemar $p$-values against the zero-shot base model B0 (bold: $p<0.05$)}
-\label{tab:pvals}
-\begin{tabular}{@{}l r r r r r r@{}}
-\toprule
-Task & FT-A & FT-B & FT-C & FT-D & FT-E & FT-B vs FT-A \\
-\midrule
-CS-Bench & 0.42 & 0.18 & -- & -- & -- & 0.57 \\
-CN numericals & 1.00 & \textbf{0.039} & 0.070 & \textbf{0.003} & \textbf{0.006} & \textbf{0.008} \\
-DBMS FD problems & -- & \textbf{0.017} & \textbf{0.003} & 0.108 & \textbf{0.001} & 0.060 \\
-DL numericals & -- & -- & 0.45 & \textbf{$<$0.001} & \textbf{0.007} & -- \\
-MBPP & -- & 0.89 & 0.79 & 0.69 & 0.79 & 0.66 \\
-Spider & -- & \textbf{0.011} & \textbf{0.015} & \textbf{0.029} & \textbf{0.019} & 0.052 \\
-GATE & -- & 1.00 & -- & -- & -- & 0.82 \\
+CS-Bench (concepts) & 400 & 51.2 & \textbf{58.0}* & 53.8 & 55.2 & -- & -- & -- \\
+OS problems & 100 & 4 & 4 & 3 & 5 & -- & -- & -- \\
+CN problems & 100 & 1 & 2 & 0 & 8* & 7 & \textbf{12}* & 11* \\
+DBMS problems & 100 & 15 & 12 & 17 & 30* & 31* & 24 & \textbf{35}* \\
+DL problems & 100 & 2 & -- & -- & 3 & 5 & \textbf{21}* & 13* \\
+MBPP (Python code) & 200 & 41.5 & 41.5 & 41.0 & \textbf{42.5} & 40.0 & 39.5 & 40.0 \\
+Spider (SQL) & 200 & 50.5 & -- & 54.5 & \textbf{60.0}* & 59.5* & 58.5* & 59.0* \\
+GATE 2021--26 & 56 & 33.9 & -- & \textbf{37.5} & 33.9 & -- & -- & -- \\
 \bottomrule
 \end{tabular}
 \end{table*}
@@ -206,182 +176,159 @@ GATE & -- & 1.00 & -- & -- & -- & 0.82 \\
 \begin{figure*}[t]
 \centering
 \includegraphics[width=0.9\textwidth]{figures/accuracy.png}
-\caption{Accuracy per task with 95\% bootstrap confidence intervals. Missing bars: run not evaluated on that task (later stages were evaluated on the five most informative tasks).}
+\caption{Accuracy of every model on every test. The thin black lines show the 95\% confidence interval: when the lines of two bars overlap a lot, the difference may be due to chance.}
 \label{fig:acc}
 \end{figure*}
 
-\subsection{RQ1: fine-tuning versus prompting}
-FT-B significantly improves over the zero-shot base model on Spider (+9.5 points, $p=0.011$), DBMS functional-dependency problems (+15.0, $p=0.017$) and network numericals (+7.0, $p=0.039$) (Tables~\ref{tab:results} and~\ref{tab:pvals}, Fig.~\ref{fig:acc}). On CS-Bench the gain (+4.0) is not significant, and about half of it comes from fewer unparseable answers (21\ra 7 of 400); three-shot prompting remains slightly better on this knowledge-oriented benchmark. MBPP and GATE do not change significantly, so fine-tuning does not degrade code generation or examination performance. The only negative signal is CS-Bench's \emph{reasoning} subset, which fell by 6--7 points in both first-stage runs (not significant at $n=142$). OS numericals stay near the floor for every model.
+\subsection{RQ1: Does fine-tuning help?}
+Yes, on the tasks where we had strong data (Table~\ref{tab:results} and Fig.~\ref{fig:acc}). FT-B is significantly better than the original model at writing SQL (50.5\ra 60.0\%), at DBMS problems (15\ra 30\%) and at networking problems (1\ra 8\%). Coding (MBPP) and GATE scores did not change, so the model did not lose general skills. On CS-Bench, which tests broad knowledge, fine-tuning helped only a little (+4 points), and about half of that came from the model writing its answer in the expected format more often. Here, simply giving the original model three examples (B1) worked slightly better. OS problems stayed hard for every model.
 
-\subsection{RQ2: what the verified data contributes}
-FT-A, trained on the same mix and settings minus the generator slice, stays at base-model level on every numerical task (CN 0\%; closure and candidate keys 0\% versus 32.8\% for FT-B), and FT-B beats FT-A on CN numericals ($p=0.008$). The numerical gains are therefore caused by the verified data rather than by teacher Q\&A, textbooks or examination questions. On CS-Bench, MBPP and GATE the two runs are within noise: the generated data is specific in its effect. FT-B also trains for 35\% more steps than FT-A, so part of any FT-B--FT-A difference could come from training length; a step-matched control is left to future work. CPU and disk scheduling stay at 0\% for every model: FT-B reproduces Gantt charts and tables perfectly but fills them with wrong values.
+\subsection{RQ2: Is the verified data the reason?}
+Yes. FT-A was trained in exactly the same way as FT-B but without the generated problems, and it stayed at the original model's level on every numerical test (for example 0\% on networking problems, while FT-B reached 8\%; $p=0.008$). On the other tests the two models are about equal. So the verified data is what teaches the procedures, such as finding attribute closures and subnet ranges. One caution: FT-B also trained for 35\% more steps than FT-A.
 
-\subsection{RQ3: adding deep learning by continued training}
-The DL stage took 70\,min of training. Exact match on the 100 held-out DL problems is a harsh metric, because every number of a multi-part answer must be right; measured per expected value, FT-C produces 26.0\% of the correct values against 15.8\% for FT-B and 12.6\% for the base model (Table~\ref{tab:dl}), significant under a paired sign-flip permutation test ($p=0.013$ vs FT-B, $p=0.001$ vs B0). Value-level accuracy rises most for convolution shapes (22\ra 47\%), softmax/cross-entropy (0\ra 56\%) and classification metrics (22\ra 44\%), while one-step gradient descent (36\ra 8\%) and momentum (31\ra 19\%) get worse and attention and sigmoid back-propagation stay at 0\%. The stage did not erode earlier skills: against FT-B, DBMS, CN, Spider and MBPP differ by at most a few items (McNemar $p\ge0.38$). The later stages, which replay 450--1,050 verified problems, raised exact match on DL to 21\% (FT-D) and 13\% (FT-E).
+\subsection{RQ3: Adding deep learning without forgetting}
+FT-C learned deep learning in 70 minutes of extra training. Getting \emph{every} number of a DL answer right is hard, so we also measured the share of correct numbers in each answer: it rose from 15.8\% (FT-B) to 26.0\% (FT-C), a significant gain. The biggest improvements were in convolution sizes (22\ra 47\%) and softmax loss (0\ra 56\%). Thanks to the replayed old examples, the scores on DBMS, networking, SQL and coding stayed the same. The later stages FT-D and FT-E improved DL further, to 21\% and 13\% fully correct answers.
 
-\begin{table}[t]
-\centering
-\caption{DL numericals ($n=100$): exact and value-level accuracy (\%)}
-\label{tab:dl}
-\begin{tabular}{@{}l r l r@{}}
-\toprule
-Model & Exact & Values [95\% CI] & $p$ vs prev. \\
-\midrule
-B0 base & 2.0 & 12.6 [8.3--17.2] & -- \\
-FT-B & 3.0 & 15.8 [11.0--20.8] & 0.27 \\
-FT-C & 5.0 & \textbf{26.0} [19.8--32.2] & \textbf{0.013} \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\subsection{RQ4: explanation quality}
-The blind comparison confirms what users of the chat interface noticed (Table~\ref{tab:pair}). FT-C wins the numericals 14--4 (sign test $p=0.031$) but loses the concept questions 6--13: it answers in a median of 79 words where the base model uses 286, and the judge rates its concept steps 2.65 and clarity 3.40 against 4.15 and 4.33 for the base model (Table~\ref{tab:scores}). Fine-tuning on short targets made the tutor more accurate but terser.
+\subsection{RQ4: Does the model explain well?}
+Table~\ref{tab:pair} shows the blind comparison against the original model. FT-C solved numerical problems better (14 wins to 4) but lost on concept questions (6 to 13). Its answers were short, a median of 79 words against 286 for the original model, because it had learned from short training answers. The judge gave FT-C 2.7 out of 5 for explaining the steps of concept answers, against 4.2 for the original model.
 
 \begin{table}[t]
 \centering
-\caption{Blind pairwise comparison against the base model (win--loss--tie, sign-test $p$)}
+\caption{Blind comparison against the original model: wins--losses--ties (* = significant, sign test $p<0.05$)}
 \label{tab:pair}
 \begin{tabular}{@{}l c c r@{}}
 \toprule
-Model & Numericals (19) & Concepts (20) & Words \\
+Model & Numerical (19) & Concepts (20) & Answer length \\
 \midrule
-B0 base & -- & -- & 286 \\
-FT-C & \textbf{14--4--1} (0.031) & 6--13--1 (0.17) & 79 \\
-FT-D & \textbf{13--4--2} (0.049) & 8--12--0 (0.50) & 102 \\
-FT-E & 13--5--1 (0.096) & 6--11--3 (0.33) & 194 \\
+Original (B0) & -- & -- & 286 words \\
+FT-C & \textbf{14--4--1}* & 6--13--1 & 79 words \\
+FT-D & \textbf{13--4--2}* & 8--12--0 & 102 words \\
+FT-E & \textbf{13--5--1} & 6--11--3 & 194 words \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{table}[t]
 \centering
-\caption{Judge scores (1--5), model / base, averaged over both orders}
+\caption{Judge scores for concept questions (1--5): fine-tuned model / original model}
 \label{tab:scores}
-\begin{tabular}{@{}l l c c c@{}}
+\begin{tabular}{@{}l c c c@{}}
 \toprule
-Model & Set & Correct & Steps & Clarity \\
+Model & Correctness & Steps & Clarity \\
 \midrule
-FT-C & numer. & 1.79 / 1.53 & 2.68 / 1.92 & 3.47 / 2.71 \\
- & concept & 3.48 / 3.35 & 2.65 / 4.15 & 3.40 / 4.33 \\
-\midrule
-FT-D & numer. & 1.76 / 1.58 & 2.79 / 1.97 & 3.61 / 2.74 \\
- & concept & 3.50 / 3.40 & 3.17 / 3.95 & 3.85 / 4.28 \\
-\midrule
-FT-E & numer. & 1.74 / 1.58 & 2.87 / 2.00 & 3.61 / 2.79 \\
- & concept & 3.12 / 3.27 & 3.55 / 4.00 & 3.77 / 4.17 \\
+FT-C & 3.5 / 3.4 & 2.7 / 4.2 & 3.4 / 4.3 \\
+FT-D & 3.5 / 3.4 & 3.2 / 4.0 & 3.9 / 4.3 \\
+FT-E & 3.1 / 3.3 & 3.6 / 4.0 & 3.8 / 4.2 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-FT-D, trained on teaching-style answers, keeps the numerical advantage (13--4, $p=0.049$) and narrows the concept gap (8--12; steps 3.17 vs 3.95). Its accuracy on DL numericals rises from 5\% to 21\% (McNemar $p<0.001$ against FT-C), with no significant change elsewhere (DBMS 31\ra 24, $p=0.31$). FT-E, trained on fuller answers, writes a median of 194 words and reaches the highest concept-step score of any fine-tuned model (3.55 vs 4.00 for the base model), but the base model still wins slightly more concept questions (6--11--3, $p=0.33$) and FT-E's concept correctness is slightly lower (3.12 vs 3.27). FT-E is the most accurate model on DBMS (35\%, $p=0.001$ vs B0; $p=0.035$ vs FT-D) and remains significantly ahead of the base model on DL, CN and Spider, with code generation unchanged; compared with FT-D it trades DL accuracy (21\ra 13, $p=0.008$) for DBMS (24\ra 35). On numerical solutions, all fine-tuned models score higher than the base model on steps and clarity even when both final answers are wrong, because they apply the right procedure (Section~\ref{sec:example}).
+The teaching-style stages fixed part of this problem. FT-D and FT-E kept the lead on numerical problems, and FT-E's answers became much fuller (194 words). Its score for explaining concept steps rose to 3.6 (original: 4.0; Table~\ref{tab:scores}). However, the original model still won slightly more concept questions (11 to 6, with 3 ties); this difference is not significant. FT-E is also the most accurate model on DBMS problems (35\%) and is significantly better than the original model on DBMS, DL, networking and SQL, with coding unchanged.
 
-\subsection{A worked example}\label{sec:example}
-For the convolution problem in Section~IV-A, both the base model and FT-E give a wrong final answer, yet the judge prefers FT-E in both orders. The base model uses $\lfloor(N-K)/S\rfloor+1$, ignoring the padding, and omits the input channels from the parameter count. FT-E writes the correct formulas, $\lfloor(N+2P-K)/S\rfloor+1$ and $(K\cdot K\cdot C+1)\cdot F$, substitutes the right values and then slips on one subtraction:
+The judge's comments show \emph{why} the fine-tuned model wins numerical questions. On the convolution problem from Section~III-A, both models gave a wrong final number. The original model used the wrong formula, ignoring the padding. FT-E used the correct formula and the correct values, but made one subtraction mistake:
 
-\noindent\fbox{\parbox{0.96\columnwidth}{\small\textsc{FT-E (excerpt).}\\
-\texttt{Output size per spatial dimension: }$\lfloor(N+2P-K)/S\rfloor+1$\\
-$=\lfloor(227+2\cdot5-11)/2\rfloor+1=\lfloor219/2\rfloor+1=110$.\\
-\texttt{Each filter has K x K x C weights plus one bias:} $11\cdot11\cdot6+1=737$.\\
-\texttt{Parameters =} $737\times20=14740$.\\[2pt]
-($227+10-11=226$, giving 114 and 14,540.) The judge's reason: ``uses the correct formulas \ldots\ and fails only on basic arithmetic, whereas [the base answer] uses incorrect formulas by ignoring padding and input channels.''}}
+\noindent\fbox{\parbox{0.96\columnwidth}{\small\textsc{FT-E's answer (shortened).}\\
+Output size $=(N+2P-K)/S+1=(227+2\cdot5-11)/2+1=219/2+1=110$\\
+Parameters $=(11\cdot11\cdot6+1)\times20=14740$\\[2pt]
+($227+10-11$ is 226, which gives 114 and 14,540.) The judge preferred FT-E because it ``uses the correct formulas and fails only on basic arithmetic.''}}
 
-\smallskip
-This pattern, a correct procedure with an arithmetic slip, is the most common failure of the fine-tuned models and motivates tool use for arithmetic.
+\subsection{Where the model still makes mistakes}
+To understand the remaining errors, we read 50 wrong answers of FT-B by hand and gave each one main cause (Table~\ref{tab:err}). None of them failed because of the answer format: the model fully learned how to present a solution. More than half were errors in \emph{carrying out} a long procedure. For example, when finding an attribute closure, the model applied one dependency and then stopped too early; in FCFS scheduling it ordered processes by their number instead of their arrival time; in LRU page replacement it drew a table with more frames than allowed. The model knows the method, but it does not track every step reliably. SQL errors were mostly about using a column from the wrong table, even though the table definitions were given.
 
-\subsection{Cost}
-The five training runs took about 12.6 hours on the laptop in total (Table~\ref{tab:runs}). Generation for the five-task accuracy evaluation of one adapter takes about 35--40 minutes with batched decoding; the explanation comparison for one model takes about 10 minutes of generation plus the judge calls. Interactive answers in the chat interface stream in 20--80 seconds.
+\begin{table}[t]
+\centering
+\caption{Causes of 50 wrong answers (FT-B)}
+\label{tab:err}
+\begin{tabular}{@{}l r l@{}}
+\toprule
+Cause & Share & Example \\
+\midrule
+Procedure not carried out correctly & 52\% & closure stops after one rule \\
+Missing knowledge & 16\% & avoidance vs prevention \\
+Wrong table or column in SQL & 12\% & column from another table \\
+Arithmetic or units & 8\% & 0.96 ms written as 9.6 ms \\
+Misread the task & 6\% & number instead of true/false \\
+Answer contradicts its reasoning & 4\% & argues for A, answers B \\
+Unclear question & 2\% & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Examples the final model gets right}
+Table~\ref{tab:examples} shows some unseen test questions that FT-E answered correctly and the original model answered wrongly. They cover the procedures the verified data teaches: closures, subnetting, network delays and layer sizes.
+
+\begin{table}[t]
+\centering
+\caption{Unseen test questions solved by FT-E but not by the original model}
+\label{tab:examples}
+\begin{tabular}{@{}l p{3.9cm} p{1.7cm}@{}}
+\toprule
+Subject & Question (shortened) & Correct answer \\
+\midrule
+DBMS & R(A,B,C,D,E), FDs \{CD\ra A, BD\ra C, AC\ra E, A\ra D, C\ra BE\}: find C+ & \{B, C, E\} \\
+DBMS & FDs \{DE\ra BC, CD\ra BE, D\ra C\} on R(A,B,C,D,E): candidate keys & \{A, D\} \\
+CN & Host 214.247.173.4/27: network, broadcast, usable hosts & .0, .31, 30 hosts \\
+CN & 3000-byte packet, 3 store-and-forward links of 8 Mbps and 4000 km: total delay & $3\times(3+20)=69$ ms \\
+CN & 1200-byte frames, 3 Mbps, 15 ms one-way delay: minimum window, sequence bits & 11 frames; 4 (GBN), 5 (SR) \\
+DL & Dense network $12\rightarrow100\rightarrow10$ with biases: number of parameters & 2,310 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{What We Learned}
+\emph{Checked answers beat more answers.} The generated problems were only about a quarter of the training data, yet they were the only part that improved numerical accuracy. Teacher-written answers, textbook questions and exam questions did not have this effect. For calculation-heavy topics, a few thousand \emph{correct} worked solutions are worth more than many unchecked ones.
+
+\emph{The model copies the style of its training answers.} When the training answers were short, the model's answers became short, even for open questions where the original model gave long, clear explanations. When we trained on longer teaching-style answers, the model's answers grew from 79 to 194 words and followed the same structure. This means that good explanations have to be designed into the training data; they do not appear by themselves.
+
+\emph{Accuracy and explanation are different goals.} A model can become more accurate while explaining less, as FT-C did. Measuring only accuracy would have hidden this. The blind comparison made it visible and showed whether each fix helped.
+
+\emph{Each stage has trade-offs.} FT-D is best on deep-learning problems, while FT-E is best on DBMS problems and gives fuller explanations. Because each stage was trained only once, part of these differences may be due to chance, so the chat app keeps both versions available.
+
+\emph{A laptop is enough.} All five training stages together took about 12.6 hours on an integrated GPU. The main practical problems were memory limits, missing 4-bit support and the laptop going to sleep during long runs, which we solved with gradient accumulation, saved checkpoints and a keep-awake setting.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=0.9\textwidth]{figures/loss.png}
-\caption{Training loss (rolling mean) and validation loss of the first-stage runs. The runs use different validation samples and are not directly comparable.}
+\caption{Training loss (smoothed) and validation loss of the first training stages. Lower is better; the curves were still falling slowly at the end, so longer training may help.}
 \label{fig:loss}
 \end{figure*}
 
-\section{Error Analysis}\label{sec:errors}
-We hand-labelled a stratified random sample of 50 wrong FT-B answers (12 CS-Bench, 8 each OS/CN/DBMS, 7 MBPP, 7 Spider) with one primary cause each (Table~\ref{tab:err}). None was a format failure.
-
-\begin{table}[t]
-\centering
-\caption{Error categories of FT-B ($n=50$)}
-\label{tab:err}
-\begin{tabular}{@{}l r l@{}}
-\toprule
-Category & Share & Typical case \\
-\midrule
-Procedure / state tracking & 52\% & closure stops after one FD \\
-Knowledge gap & 16\% & avoidance vs prevention \\
-Schema hallucination & 12\% & column from wrong table \\
-Arithmetic / units & 8\% & 0.96\,ms written as 9.6\,ms \\
-Misread task & 6\% & number returned, bool expected \\
-Answer contradicts reasoning & 4\% & argues A, answers B \\
-Ambiguous item & 2\% & -- \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Procedure errors account for 20 of the 24 numerical failures and fall into three patterns: \emph{early stopping in fixed-point loops} (attribute closure applies one dependency and declares that nothing else applies), \emph{unfaithful reading of the input} (claiming an attribute never appears on a right-hand side when it does; ordering FCFS by process number instead of arrival) and \emph{inconsistent state} (LRU tables wider than the frame count; negative waiting times that are never checked). Spider failures are grounding errors against a schema that is in the prompt. In the explanation stages a second pattern appears in open answers: the structure is right but an invented example or a loosely worded point lowers correctness, for example a CNN ``example trace'' that does not compute a real convolution.
-
-\section{Discussion}
-\emph{Targets decide behaviour.} The clearest lesson is that the model reproduces the shape of its training targets. Short teacher answers produced a terse tutor (79 words); teaching-format answers of median 164 and 286 words produced answers of 102 and 194 words with the same structure. This is consistent with the view that fine-tuning mainly teaches format~\cite{lima}, and it means explanation quality has to be designed into the data, not hoped for.
-
-\emph{Verified data teaches procedures, not arithmetic.} Verified generators are the only source that moved numerical accuracy, and every later stage that replayed them kept or improved it. The remaining errors are mostly arithmetic and state tracking inside an otherwise correct procedure, which a 1.5B model without tools does poorly; program-aided decoding~\cite{pal} would address exactly these.
-
-\emph{Trade-offs between stages.} FT-D and FT-E are not uniformly ordered: FT-D is better on DL numericals, FT-E on DBMS problems and concept steps. With one seed per stage, some of this variation is noise, and the 39-question explanation set gives wide intervals. In practice the chat interface offers both.
-
-\emph{Why the base model still explains concepts well.} Qwen2.5-1.5B-Instruct was already tuned for helpful, long-form answers. Our stages train on fewer than 1,300 explanation examples for one epoch; matching or exceeding the base model on open concept questions probably needs more teaching data, more epochs, or preference tuning~\cite{dpo} on pairs where the base answer is preferred.
-
-\section{Limitations and Ethics}
-\begin{itemize}
-\item One epoch per run and one seed per configuration; validation loss was still falling slowly (Fig.~\ref{fig:loss}).
-\item FT-B trains for more steps than FT-A, which partly confounds the ablation.
-\item The GATE test has only 56 items ($\pm$12-point intervals); MMLU was not evaluated.
-\item Error labels come from a single annotator on a quota-stratified sample.
-\item Explanation quality is judged by one LLM judge on 39 questions; LLM judges have known biases~\cite{mtbench}, which order swapping reduces but does not remove. A human rating would strengthen the result.
-\item Later stages were evaluated on five of the eight accuracy tasks (DL, DBMS, CN, Spider, MBPP); CS-Bench, OS and GATE were not re-run.
-\item Teacher-written data and the judge come from larger models whose own errors can leak in despite key-agreement filters.
-\end{itemize}
-\emph{Ethics.} A local tutor keeps student data on the device. Its answers can still be wrong, especially on long calculations, so the interface states this and the practice mode shows the verified answer. Public examination questions are used for training and evaluation but are not redistributed in the public repository.
-
 \section{Conclusion}
-Verified, programmatically generated training data teaches a 1.5B model procedures that neither prompting nor LLM-written data teach: functional-dependency closure and keys, subnetting and CRC, and convolution shapes and losses in deep learning. Continued training with replay adds a subject in about an hour without forgetting. A blind, order-balanced pairwise judge shows that accuracy and explanation quality are separate goals: training on short answers made the tutor terser than the base model, and teaching-format targets narrow but do not close that gap, while the final model stays significantly more accurate than the base model on four of five tasks and wins numerical solutions 13--5. Future work: tool use for arithmetic and simulation, more epochs and seeds, preference tuning on the judged pairs, a step-matched ablation and a human rating study.
+We showed that a small 1.5-billion-parameter model, fine-tuned on a laptop, can become a much better computer-science tutor. The most important ingredient is training data whose answers are \textbf{computed by code}: it taught the model procedures that neither prompting nor AI-written answers taught, and a controlled experiment confirmed this. New subjects can be added in about an hour of extra training without forgetting old ones. We also found that \textbf{the model copies the length and style of its training answers}. Short answers made it accurate but terse, and longer teaching-style answers brought its explanations close to, but not yet above, the original model's.
 
-\begin{thebibliography}{23}
+\emph{Limitations.} Our study has some limits that readers should keep in mind:
+\begin{itemize}
+\item Each stage was trained only once and for one epoch, so some differences between stages may be due to chance.
+\item FT-B trained for more steps than FT-A, which slightly weakens the comparison between them.
+\item The explanation test uses one AI judge and only 39 questions; a rating by human teachers would make it stronger.
+\item The GATE test has only 56 questions, and the later models were tested on five of the eight test sets to save time.
+\item Some training answers were written by a larger AI model, which can make mistakes even after our checks.
+\end{itemize}
+
+\emph{Future work.} We see four clear next steps: let the model call a calculator or run code for arithmetic and long simulations~\cite{pal}; train for more epochs with several random seeds; use preference training such as DPO~\cite{dpo} on the answer pairs the judge already compared; and test the tutor with real students in a course.
+
+\emph{Responsible use.} Because the tutor runs on the student's own laptop, no data leaves the device. Its answers can still be wrong, especially in long calculations, so the app says this clearly and the practice mode always shows the verified answer.
+
+\begin{thebibliography}{19}
 \bibitem{lora} E.~J. Hu \emph{et al.}, ``LoRA: Low-rank adaptation of large language models,'' arXiv:2106.09685, 2021.
 \bibitem{qlora} T.~Dettmers \emph{et al.}, ``QLoRA: Efficient finetuning of quantized LLMs,'' in \emph{NeurIPS}, 2023.
 \bibitem{qwen25} Qwen Team, ``Qwen2.5 technical report,'' arXiv:2412.15115, 2024.
-\bibitem{qwencoder} B.~Hui \emph{et al.}, ``Qwen2.5-Coder technical report,'' arXiv:2409.12186, 2024.
 \bibitem{csbench} X.~Song \emph{et al.}, ``CS-Bench: A comprehensive benchmark for large language models towards computer science mastery,'' arXiv:2406.08587, 2024.
 \bibitem{guidelm} ``Supervised fine-tuning LLMs to behave as pedagogical agents in programming education,'' arXiv:2502.20527, 2025.
 \bibitem{dsaqlora} ``Fine-tuning of large language models for solving DSA problems using QLoRA,'' IEEE, doc.~10969969.
 \bibitem{aita} ``AI-TA: Towards an intelligent question-answer teaching assistant using open-source LLMs,'' arXiv:2311.02775, 2023.
 \bibitem{smallmodels} ``Small models, big support: A local LLM framework for educator-centric content creation and assessment,'' arXiv:2506.05925, 2025.
-\bibitem{vta} ``A large-scale real-world evaluation of LLM-based virtual teaching assistant,'' arXiv:2506.17363, 2025.
 \bibitem{selfinstruct} Y.~Wang \emph{et al.}, ``Self-Instruct: Aligning language models with self-generated instructions,'' arXiv:2212.10560, 2022.
 \bibitem{glan} H.~Li \emph{et al.}, ``Synthetic data (almost) from scratch: Generalized instruction tuning for language models,'' arXiv:2402.13064, 2024.
+\bibitem{orca} S.~Mukherjee \emph{et al.}, ``Orca: Progressive learning from complex explanation traces of GPT-4,'' arXiv:2306.02707, 2023.
+\bibitem{lima} C.~Zhou \emph{et al.}, ``LIMA: Less is more for alignment,'' in \emph{NeurIPS}, 2023.
+\bibitem{mtbench} L.~Zheng \emph{et al.}, ``Judging LLM-as-a-judge with MT-Bench and Chatbot Arena,'' in \emph{NeurIPS Datasets and Benchmarks}, 2023.
 \bibitem{forgetting} ``Analyzing and reducing catastrophic forgetting in parameter efficient tuning,'' arXiv:2402.18865, 2024.
 \bibitem{spider} T.~Yu \emph{et al.}, ``Spider: A large-scale human-labeled dataset for complex and cross-domain semantic parsing and text-to-SQL task,'' in \emph{EMNLP}, 2018.
 \bibitem{mbpp} J.~Austin \emph{et al.}, ``Program synthesis with large language models,'' arXiv:2108.07732, 2021.
-\bibitem{lima} C.~Zhou \emph{et al.}, ``LIMA: Less is more for alignment,'' in \emph{NeurIPS}, 2023, arXiv:2305.11206.
-\bibitem{orca} S.~Mukherjee \emph{et al.}, ``Orca: Progressive learning from complex explanation traces of GPT-4,'' arXiv:2306.02707, 2023.
-\bibitem{pal} L.~Gao \emph{et al.}, ``PAL: Program-aided language models,'' in \emph{ICML}, 2023, arXiv:2211.10435.
-\bibitem{mtbench} L.~Zheng \emph{et al.}, ``Judging LLM-as-a-judge with MT-Bench and Chatbot Arena,'' in \emph{NeurIPS Datasets and Benchmarks}, 2023, arXiv:2306.05685.
-\bibitem{dpo} R.~Rafailov \emph{et al.}, ``Direct preference optimization: Your language model is secretly a reward model,'' in \emph{NeurIPS}, 2023, arXiv:2305.18290.
-\bibitem{replay} D.~Rolnick \emph{et al.}, ``Experience replay for continual learning,'' in \emph{NeurIPS}, 2019, arXiv:1811.11682.
 \bibitem{mcnemar} Q.~McNemar, ``Note on the sampling error of the difference between correlated proportions or percentages,'' \emph{Psychometrika}, vol.~12, no.~2, pp.~153--157, 1947.
-\bibitem{efron} B.~Efron and R.~J. Tibshirani, \emph{An Introduction to the Bootstrap}. Chapman \& Hall, 1993.
+\bibitem{dpo} R.~Rafailov \emph{et al.}, ``Direct preference optimization: Your language model is secretly a reward model,'' in \emph{NeurIPS}, 2023.
+\bibitem{pal} L.~Gao \emph{et al.}, ``PAL: Program-aided language models,'' in \emph{ICML}, 2023.
 \end{thebibliography}
-
-\appendix
-\section*{Prompts and Settings}
-\emph{System prompt} (training, evaluation and chat): ``You are CSE-Tutor, an expert teaching assistant for Computer Science (DSA, Programming, DBMS, Operating Systems, Computer Networks). Explain step by step and end numerical answers with a line starting with `Final answer:'.''
-
-\emph{Teaching format} (FT-D/FT-E targets): direct answer in 1--2 plain sentences; numbered key points with bold labels, each explaining what and why; one concrete example; an ``In short:'' line; plain-text mathematics with Unicode symbols; code in fenced blocks; 150--300 words (FT-D) or 250--350 words (FT-E).
-
-\emph{Judge rubric}: correctness (with the verified reference for numericals; a wrong final value caps correctness at 2), steps (complete, ordered, justified) and clarity (understandable for a beginner), each 1--5; overall winner A, B or tie, correctness first; ``do not prefer an answer just because it is longer''; JSON output; temperature 0.
-
-\emph{Decoding}: greedy, batched with left padding; at most 1,024 new tokens for verified problems and explanations, 512 for multiple-choice and code, 256 for SQL; chat interface: temperature 0 by default, top-p 0.9 when sampling.
-
-\emph{Code and data}: generators, training and evaluation scripts, evaluation outputs and judge records are in the project repository; trained adapters are kept locally.
 
 \end{document}

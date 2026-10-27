@@ -2,7 +2,7 @@
 
 A LoRA fine-tune of Qwen2.5-1.5B-Instruct for CSE education (DSA, Programming, DBMS, OS, CN and Deep Learning), trained on a mix that includes 3,000 programmatically verified OS/CN/DBMS/DL problems.
 
-- **Research paper (7 pages):** [paper/CSE-Tutor_paper.pdf](paper/CSE-Tutor_paper.pdf) (source: `paper/paper.html`; Overleaf/LaTeX: `paper/CSE-Tutor_overleaf.zip`)
+- **Research paper (6 pages):** [paper/CSE-Tutor_paper.pdf](paper/CSE-Tutor_paper.pdf) (source: `paper/paper.html`; Overleaf/LaTeX: `paper/CSE-Tutor_overleaf.zip`)
 - **Beginner-friendly review guide:** [docs/CSE-Tutor_Review_Guide.pdf](docs/CSE-Tutor_Review_Guide.pdf)
 - **Final report:** [docs/FINAL_REPORT.md](docs/FINAL_REPORT.md); original design: [PROJECT_PLAN.md](PROJECT_PLAN.md)
 - **Chat with the model:** `python demo/server.py`, then open http://127.0.0.1:8000
